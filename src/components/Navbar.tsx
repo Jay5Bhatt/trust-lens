@@ -52,7 +52,7 @@ export function Navbar() {
               className="flex items-center gap-2"
               whileHover={{ scale: 1.02 }}
             >
-              <img src={logo} alt="TrustLens" className="h-10 w-auto" />
+              <img src={logo} alt="TrustLens" className="h-8 w-auto" />
             </motion.a>
 
             {/* Desktop Navigation */}
