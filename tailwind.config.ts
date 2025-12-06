@@ -47,7 +47,7 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // TrustLens custom colors
+        // TrustLens custom colors - More vibrant
         cyan: {
           DEFAULT: "hsl(var(--cyan))",
           glow: "hsl(var(--cyan-glow))",
@@ -68,18 +68,40 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
+      fontSize: {
+        // Enhanced base sizes
+        'xs': ['0.8125rem', { lineHeight: '1.5' }],
+        'sm': ['0.9375rem', { lineHeight: '1.5' }],
+        'base': ['1rem', { lineHeight: '1.6' }],
+        'lg': ['1.125rem', { lineHeight: '1.6' }],
+        'xl': ['1.3125rem', { lineHeight: '1.5' }],
+        '2xl': ['1.625rem', { lineHeight: '1.4' }],
+        '3xl': ['2rem', { lineHeight: '1.3' }],
+        '4xl': ['2.5rem', { lineHeight: '1.2' }],
+        '5xl': ['3.25rem', { lineHeight: '1.15' }],
+        '6xl': ['4rem', { lineHeight: '1.1' }],
+        '7xl': ['5rem', { lineHeight: '1.05' }],
+        '8xl': ['6rem', { lineHeight: '1' }],
+      },
+      letterSpacing: {
+        tight: '-0.02em',
+        normal: '0',
+        wide: '0.02em',
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
         xl: "1rem",
         "2xl": "1.5rem",
+        "3xl": "2rem",
       },
       boxShadow: {
         glow: "var(--shadow-glow)",
         card: "var(--shadow-card)",
-        "glow-sm": "0 0 20px hsl(var(--cyan) / 0.3)",
-        "glow-lg": "0 0 60px hsl(var(--cyan) / 0.4), 0 0 100px hsl(var(--cyan) / 0.2)",
+        "glow-sm": "0 0 30px hsl(var(--cyan) / 0.35)",
+        "glow-lg": "0 0 80px hsl(var(--cyan) / 0.5), 0 0 120px hsl(var(--cyan) / 0.25)",
+        "glow-intense": "var(--shadow-glow-intense)",
       },
       backgroundImage: {
         "gradient-primary": "var(--gradient-primary)",
@@ -132,6 +154,10 @@ export default {
           "0%": { transform: "rotate(0deg) translateX(100px) rotate(0deg)" },
           "100%": { transform: "rotate(360deg) translateX(100px) rotate(-360deg)" },
         },
+        "gradient-shift": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -145,6 +171,11 @@ export default {
         float: "float 6s ease-in-out infinite",
         "pulse-ring": "pulse-ring 2s ease-out infinite",
         orbit: "orbit 20s linear infinite",
+        "gradient-shift": "gradient-shift 6s ease infinite",
+      },
+      spacing: {
+        '18': '4.5rem',
+        '22': '5.5rem',
       },
     },
   },

@@ -10,9 +10,12 @@ import {
   X,
   Sparkles,
   Shield,
-  Eye,
   Zap,
   ChevronRight,
+  ArrowRight,
+  FileText,
+  Image,
+  Star,
 } from "lucide-react";
 import { Button } from "./ui/button";
 
@@ -158,14 +161,27 @@ export function DemoSection() {
     }
   };
 
+  const getStatusBg = (status: string) => {
+    switch (status) {
+      case "AUTHENTIC":
+        return "bg-green-400/10 border-green-400/30";
+      case "MANIPULATED":
+        return "bg-destructive/10 border-destructive/30";
+      case "AI-GENERATED":
+        return "bg-orange-400/10 border-orange-400/30";
+      default:
+        return "";
+    }
+  };
+
   const getRiskColor = (risk: string) => {
     switch (risk) {
       case "LOW":
-        return "text-green-400 bg-green-400/10";
+        return "text-green-400 bg-green-400/10 border-green-400/30";
       case "MEDIUM":
-        return "text-yellow-400 bg-yellow-400/10";
+        return "text-yellow-400 bg-yellow-400/10 border-yellow-400/30";
       case "HIGH":
-        return "text-destructive bg-destructive/10";
+        return "text-destructive bg-destructive/10 border-destructive/30";
       default:
         return "text-foreground";
     }
@@ -174,39 +190,41 @@ export function DemoSection() {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case "low":
-        return "border-green-400/50 bg-green-400/5";
+        return "border-l-green-400 bg-green-400/5";
       case "medium":
-        return "border-yellow-400/50 bg-yellow-400/5";
+        return "border-l-yellow-400 bg-yellow-400/5";
       case "high":
-        return "border-destructive/50 bg-destructive/5";
+        return "border-l-destructive bg-destructive/5";
       default:
-        return "border-border";
+        return "border-l-border";
     }
   };
 
   return (
-    <section id="demo" className="relative py-24 lg:py-32 overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-navy-light/20 to-background" />
-      <div className="absolute top-1/2 right-0 w-[600px] h-[600px] bg-purple/5 rounded-full blur-[150px]" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+    <section id="demo" className="relative min-h-screen py-32 lg:py-40 overflow-hidden">
+      {/* Dramatic background with spotlight */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-[hsl(250,50%,5%)] to-background" />
+      <div className="absolute inset-0 spotlight" />
+      <div className="absolute top-1/2 right-0 w-[800px] h-[800px] bg-purple/8 rounded-full blur-[200px]" />
+      <div className="absolute top-1/3 left-0 w-[600px] h-[600px] bg-cyan/6 rounded-full blur-[180px]" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan/50 to-transparent" />
 
       <div ref={ref} className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+        {/* Header - MASSIVE */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
-          className="text-center mb-12"
+          className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-card mb-6">
-            <Eye className="w-4 h-4 text-cyan" />
-            <span className="text-sm text-muted-foreground">Live Demo</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card mb-8">
+            <Zap className="w-4 h-4 text-cyan" />
+            <span className="text-sm font-medium text-muted-foreground">Live Demo</span>
           </div>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-            See It <span className="text-gradient">In Action</span>
+          <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6">
+            See It <span className="text-gradient-vibrant">In Action</span>
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
             Upload any image and watch TrustLens reveal the truth
           </p>
         </motion.div>
@@ -216,12 +234,12 @@ export function DemoSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="glass-card rounded-3xl p-4 md:p-8 shadow-card"
+          className="glass-card rounded-[2rem] p-6 md:p-10 shadow-card border-cyan/20"
         >
-          <div className="grid lg:grid-cols-5 gap-6">
-            {/* Upload Area */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Drag & Drop Zone */}
+          <div className="grid lg:grid-cols-5 gap-8">
+            {/* Upload Area - Enhanced */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Drag & Drop Zone - Larger with animated border */}
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -229,10 +247,10 @@ export function DemoSection() {
                 }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
-                className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 ${
+                className={`relative rounded-2xl p-10 text-center transition-all duration-300 ${
                   isDragging
-                    ? "border-cyan bg-cyan/5"
-                    : "border-border hover:border-cyan/50"
+                    ? "bg-cyan/10 animated-border"
+                    : "border-2 border-dashed border-border hover:border-cyan/50 hover:bg-cyan/5"
                 }`}
               >
                 <input
@@ -241,52 +259,67 @@ export function DemoSection() {
                   onChange={handleFileSelect}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="font-medium mb-2">Drag & drop or click to upload</p>
-                <p className="text-sm text-muted-foreground">
-                  JPG, PNG, PDF, MP4 • Max 10MB
-                </p>
+                <motion.div
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <Upload className="w-16 h-16 mx-auto mb-6 text-cyan/60" />
+                </motion.div>
+                <p className="text-lg font-semibold mb-3">Drag & drop or click to upload</p>
+                <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1"><Image className="w-4 h-4" /> JPG, PNG</span>
+                  <span className="flex items-center gap-1"><FileText className="w-4 h-4" /> PDF</span>
+                </div>
+                <p className="text-xs text-muted-foreground/60 mt-2">Max 10MB</p>
               </div>
 
-              {/* Example Buttons */}
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Or try an example:</p>
-                <div className="grid gap-2">
+              {/* Example Buttons - Card style */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-muted-foreground">Or try an example:</p>
+                <div className="grid gap-3">
                   {[
-                    { key: "fake-upi", label: "Fake UPI Slip" },
-                    { key: "fake-whatsapp", label: "Fake WhatsApp Screenshot" },
-                    { key: "ai-generated", label: "AI-Generated Image" },
+                    { key: "fake-upi", label: "Fake UPI Slip", icon: FileText, color: "from-red-500/20 to-orange-500/20" },
+                    { key: "fake-whatsapp", label: "Fake WhatsApp Screenshot", icon: Image, color: "from-green-500/20 to-emerald-500/20" },
+                    { key: "ai-generated", label: "AI-Generated Image", icon: Sparkles, color: "from-purple/20 to-pink-500/20" },
                   ].map((example) => (
-                    <Button
+                    <button
                       key={example.key}
-                      variant="glass"
-                      className="justify-start"
                       onClick={() => handleExampleClick(example.key)}
                       disabled={isAnalyzing}
+                      className={`glass-card rounded-xl p-4 flex items-center gap-4 text-left transition-all duration-300 hover:bg-gradient-to-r ${example.color} hover:border-cyan/30 hover:translate-x-1 disabled:opacity-50 group`}
                     >
-                      <FileImage className="w-4 h-4 mr-2" />
-                      Try: {example.label}
-                    </Button>
+                      <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center">
+                        <example.icon className="w-5 h-5 text-muted-foreground group-hover:text-cyan transition-colors" />
+                      </div>
+                      <span className="flex-1 font-medium text-sm">Try: {example.label}</span>
+                      <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-cyan group-hover:translate-x-1 transition-all" />
+                    </button>
                   ))}
                 </div>
               </div>
 
               {/* Current File */}
               {uploadedFile && (
-                <div className="glass-card rounded-xl p-4 flex items-center justify-between">
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="glass-card rounded-xl p-4 flex items-center justify-between border-cyan/30"
+                >
                   <div className="flex items-center gap-3">
-                    <FileImage className="w-5 h-5 text-cyan" />
-                    <span className="text-sm truncate max-w-[200px]">{uploadedFile}</span>
+                    <div className="w-10 h-10 rounded-lg bg-cyan/10 flex items-center justify-center">
+                      <FileImage className="w-5 h-5 text-cyan" />
+                    </div>
+                    <span className="text-sm font-medium truncate max-w-[180px]">{uploadedFile}</span>
                   </div>
-                  <button onClick={resetDemo} className="text-muted-foreground hover:text-foreground">
+                  <button onClick={resetDemo} className="w-8 h-8 rounded-lg hover:bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
                     <X className="w-4 h-4" />
                   </button>
-                </div>
+                </motion.div>
               )}
             </div>
 
-            {/* Results Dashboard */}
-            <div className="lg:col-span-3 space-y-4">
+            {/* Results Dashboard - Enhanced */}
+            <div className="lg:col-span-3 space-y-6">
               <AnimatePresence mode="wait">
                 {/* Analyzing State */}
                 {isAnalyzing && (
@@ -295,33 +328,36 @@ export function DemoSection() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="glass-card rounded-2xl p-8 text-center"
+                    className="glass-card rounded-2xl p-10 text-center"
                   >
-                    <div className="relative w-20 h-20 mx-auto mb-6">
+                    <div className="relative w-24 h-24 mx-auto mb-8">
                       <div className="absolute inset-0 rounded-full border-4 border-muted" />
                       <div className="absolute inset-0 rounded-full border-4 border-cyan border-t-transparent animate-spin" />
-                      <Shield className="absolute inset-0 m-auto w-8 h-8 text-cyan" />
+                      <Shield className="absolute inset-0 m-auto w-10 h-10 text-cyan" />
                     </div>
-                    <h3 className="text-lg font-semibold mb-4">Analyzing Content...</h3>
-                    <div className="space-y-3 max-w-sm mx-auto">
+                    <h3 className="text-xl font-bold mb-6">Analyzing Content...</h3>
+                    <div className="space-y-4 max-w-sm mx-auto">
                       {analysisSteps.map((step, index) => (
-                        <div
+                        <motion.div
                           key={index}
-                          className={`flex items-center gap-3 text-sm transition-all duration-300 ${
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: index <= currentStep ? 1 : 0.3, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className={`flex items-center gap-4 text-sm transition-all duration-300 ${
                             index <= currentStep
                               ? "text-foreground"
                               : "text-muted-foreground/50"
                           }`}
                         >
                           {index < currentStep ? (
-                            <CheckCircle className="w-4 h-4 text-green-400" />
+                            <CheckCircle className="w-5 h-5 text-green-400 shrink-0" />
                           ) : index === currentStep ? (
-                            <Zap className="w-4 h-4 text-cyan animate-pulse" />
+                            <Zap className="w-5 h-5 text-cyan animate-pulse shrink-0" />
                           ) : (
-                            <div className="w-4 h-4 rounded-full border border-muted-foreground/30" />
+                            <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
                           )}
                           {step}
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   </motion.div>
@@ -334,69 +370,85 @@ export function DemoSection() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="space-y-4"
+                    className="space-y-6"
                   >
-                    {/* Authenticity Score */}
-                    <div className="glass-card rounded-2xl p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-semibold">Authenticity Score</h4>
-                        <span className={`text-3xl font-bold ${result.authenticityScore > 70 ? "text-green-400" : result.authenticityScore > 40 ? "text-yellow-400" : "text-destructive"}`}>
-                          {result.authenticityScore}%
-                        </span>
+                    {/* Authenticity Score - Larger and more prominent */}
+                    <div className="glass-card rounded-2xl p-8">
+                      <div className="flex items-start justify-between mb-6">
+                        <div>
+                          <h4 className="font-semibold text-muted-foreground mb-1">Authenticity Score</h4>
+                          <div className="flex items-center gap-4">
+                            <motion.span 
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                              className={`text-6xl md:text-7xl font-bold ${result.authenticityScore > 70 ? "text-green-400" : result.authenticityScore > 40 ? "text-yellow-400" : "text-destructive"}`}
+                            >
+                              {result.authenticityScore}%
+                            </motion.span>
+                          </div>
+                        </div>
+                        <div className="text-right space-y-2">
+                          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-lg font-bold ${getStatusBg(result.status)} ${getStatusColor(result.status)}`}>
+                            {result.status === "AUTHENTIC" ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                            {result.status}
+                          </div>
+                          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-semibold ${getRiskColor(result.riskLevel)}`}>
+                            {result.riskLevel} RISK
+                          </div>
+                        </div>
                       </div>
-                      <div className="h-3 rounded-full bg-muted overflow-hidden">
+                      <div className="h-4 rounded-full bg-muted overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${result.authenticityScore}%` }}
-                          transition={{ duration: 1 }}
+                          transition={{ duration: 1.5, ease: "easeOut" }}
                           className={`h-full rounded-full ${result.authenticityScore > 70 ? "bg-gradient-to-r from-green-500 to-emerald-400" : result.authenticityScore > 40 ? "bg-gradient-to-r from-yellow-500 to-orange-400" : "bg-gradient-to-r from-red-500 to-destructive"}`}
                         />
                       </div>
-                      <div className="flex items-center justify-between mt-4">
-                        <span className={`text-lg font-bold ${getStatusColor(result.status)}`}>
-                          {result.status}
-                        </span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getRiskColor(result.riskLevel)}`}>
-                          {result.riskLevel} RISK
-                        </span>
-                      </div>
                     </div>
 
-                    {/* Anomalies */}
+                    {/* Anomalies - Enhanced with colored borders */}
                     <div className="glass-card rounded-2xl p-6">
-                      <h4 className="font-semibold mb-4 flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                      <h4 className="font-bold mb-5 flex items-center gap-2 text-lg">
+                        <AlertTriangle className="w-5 h-5 text-yellow-400" />
                         Anomalies Detected ({result.anomalies.length})
                       </h4>
                       <div className="space-y-3">
                         {result.anomalies.map((anomaly, index) => (
-                          <div
+                          <motion.div
                             key={index}
-                            className={`border rounded-xl p-3 ${getSeverityColor(anomaly.severity)}`}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className={`border-l-4 rounded-xl p-4 ${getSeverityColor(anomaly.severity)}`}
                           >
-                            <div className="font-medium text-sm">{anomaly.title}</div>
-                            <div className="text-xs text-muted-foreground mt-1">
+                            <div className="font-semibold text-sm flex items-center gap-2">
+                              <CheckCircle className={`w-4 h-4 ${anomaly.severity === 'high' ? 'text-destructive' : anomaly.severity === 'medium' ? 'text-yellow-400' : 'text-green-400'}`} />
+                              {anomaly.title}
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-1 ml-6">
                               {anomaly.description}
                             </div>
-                          </div>
+                          </motion.div>
                         ))}
                       </div>
                     </div>
 
                     {/* Reality Trace */}
                     <div className="glass-card rounded-2xl p-6">
-                      <h4 className="font-semibold mb-4 flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-purple" />
+                      <h4 className="font-bold mb-5 flex items-center gap-2 text-lg">
+                        <Sparkles className="w-5 h-5 text-purple" />
                         Reality Trace™
                       </h4>
                       <div className="flex flex-wrap items-center gap-2">
                         {result.realityTrace.map((step, index) => (
                           <div key={index} className="flex items-center">
-                            <span className="px-3 py-1.5 rounded-lg bg-muted text-sm">
+                            <span className="px-4 py-2 rounded-xl bg-muted text-sm font-medium">
                               {step}
                             </span>
                             {index < result.realityTrace.length - 1 && (
-                              <ChevronRight className="w-4 h-4 text-muted-foreground mx-1" />
+                              <ChevronRight className="w-5 h-5 text-muted-foreground mx-1" />
                             )}
                           </div>
                         ))}
@@ -405,13 +457,21 @@ export function DemoSection() {
 
                     {/* Recommendation */}
                     <div className="glass-card rounded-2xl p-6 border-l-4 border-cyan">
-                      <h4 className="font-semibold mb-2 flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-cyan" />
+                      <h4 className="font-bold mb-3 flex items-center gap-2 text-lg">
+                        <Shield className="w-5 h-5 text-cyan" />
                         Recommendation
                       </h4>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-muted-foreground">
                         {result.recommendation}
                       </p>
+                    </div>
+
+                    {/* Accuracy badge */}
+                    <div className="flex justify-center">
+                      <div className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-cyan/10 to-purple/10 border border-cyan/30">
+                        <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                        <span className="font-semibold text-gradient">94%+ Accuracy Rate</span>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -423,11 +483,13 @@ export function DemoSection() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="glass-card rounded-2xl p-12 text-center"
+                    className="glass-card rounded-2xl p-16 text-center"
                   >
-                    <Shield className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-                    <h3 className="text-lg font-semibold mb-2">Upload to Start Analysis</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
+                      <Shield className="w-10 h-10 text-muted-foreground/50" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-3">Upload to Start Analysis</h3>
+                    <p className="text-muted-foreground max-w-sm mx-auto">
                       Drag & drop a file or select an example to see TrustLens in action
                     </p>
                   </motion.div>
