@@ -50,7 +50,8 @@ function convertToAnalysisResult(
     const lowerAnomaly = anomaly.toLowerCase();
     
     if (lowerAnomaly.includes("no exif") || lowerAnomaly.includes("missing")) {
-      severity = exifResult.suspicious ? "High" : "Medium";
+      // Missing EXIF is common and not necessarily suspicious - mark as Low severity
+      severity = "Low";
     } else if (lowerAnomaly.includes("suspicious")) {
       severity = "High";
     }
@@ -122,9 +123,9 @@ function convertToAnalysisResult(
       color = "red";
     } else if (geminiResult.overall_verdict === "likely_real") {
       score = Math.floor(geminiResult.confidence * 20) + 80; // 80-100 range
-      // Lower score if EXIF is suspicious
+      // Only lower score if EXIF has actual suspicious indicators (not just missing data)
       if (exifResult.suspicious) {
-        score = Math.max(60, score - 15);
+        score = Math.max(70, score - 10); // Less penalty, trust Gemini more
       }
       status = "LIKELY AUTHENTIC";
       color = "green";
@@ -140,12 +141,14 @@ function convertToAnalysisResult(
   } else {
     // Gemini failed, use EXIF only
     if (exifResult.suspicious) {
+      // Only show suspicious if there are actual red flags, not just missing EXIF
       score = Math.floor((1 - exifResult.confidence) * 40) + 20; // 20-60 range
       status = "SUSPICIOUS METADATA";
       color = "yellow";
     } else {
+      // Missing EXIF alone is not suspicious - show as informational
       score = Math.floor(exifResult.confidence * 30) + 60; // 60-90 range
-      status = "METADATA CHECK PASSED";
+      status = exifResult.hasExif ? "METADATA CHECK PASSED" : "METADATA ANALYSIS COMPLETE";
       color = "green";
     }
   }

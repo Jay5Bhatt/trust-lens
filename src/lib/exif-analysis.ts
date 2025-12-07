@@ -42,13 +42,13 @@ export async function analyzeExifMetadata(file: File): Promise<ExifAnalysisResul
 
             if (!hasExif) {
               URL.revokeObjectURL(url);
-              anomalies.push("No EXIF metadata found - image may have been stripped or generated");
+              anomalies.push("No EXIF metadata found - common for screenshots and processed images");
               resolve({
                 hasExif: false,
                 anomalies,
                 metadata: {},
-                suspicious: true,
-                confidence: 0.6,
+                suspicious: false, // Missing EXIF alone is not suspicious - it's very common
+                confidence: 0.7, // Slightly lower confidence but not suspicious
               });
               return;
             }
@@ -95,13 +95,9 @@ export async function analyzeExifMetadata(file: File): Promise<ExifAnalysisResul
               metadata.compression = compression.toString();
             }
 
-            // Check for missing critical metadata
-            if (!make && !model) {
-              anomalies.push("Missing camera make/model information");
-            }
-            if (!dateTimeOriginal && !dateTime) {
-              anomalies.push("Missing date/time information");
-            }
+            // Note missing metadata but don't treat as anomalies (common for processed images)
+            // Only add as informational if we have some EXIF but missing these specific fields
+            // (If we have EXIF data, we can note missing fields, but it's not necessarily suspicious)
 
             // Check for location data
             const latitude = EXIF.getTag(this, "GPSLatitude");
@@ -110,8 +106,13 @@ export async function analyzeExifMetadata(file: File): Promise<ExifAnalysisResul
               metadata.location = `GPS: ${latitude}, ${longitude}`;
             }
 
-            // Determine if suspicious
-            const suspicious = anomalies.length > 0 || !metadata.camera || !metadata.date;
+            // Determine if suspicious - only mark as suspicious if there are actual red flags
+            // Missing camera/date alone is not suspicious (common for processed images)
+            // Only suspicious if there's suspicious software or other actual indicators
+            const hasSuspiciousSoftware = anomalies.some(a => a.toLowerCase().includes("suspicious software"));
+            const suspicious = hasSuspiciousSoftware || anomalies.some(a => 
+              a.toLowerCase().includes("suspicious") && !a.toLowerCase().includes("no exif") && !a.toLowerCase().includes("missing")
+            );
 
             // Calculate confidence (higher if has complete metadata, lower if anomalies)
             let confidence = 0.8;
