@@ -1,109 +1,108 @@
-import { analyzeExifMetadata, type ExifAnalysisResult } from "./exif-analysis";
-import { analyzeImageAPI, type AnalysisResult as GeminiResult } from "./gemini-analysis";
+import { analyzeImageMediaAPI } from "./mediaAnalyzer-browser";
+import type { CombinedAnalysisResult as NewCombinedResult } from "./types/media-analysis";
 import type { AnalysisResult, Anomaly, Severity } from "@/components/demo/types";
 
 /**
- * Combined analysis result with both EXIF and Gemini data
- */
-export interface CombinedAnalysisResult {
-  exif: ExifAnalysisResult;
-  gemini: GeminiResult;
-  final: AnalysisResult;
-}
-
-/**
  * Perform 2-step analysis: EXIF metadata first, then Gemini AI analysis
+ * Browser-friendly version that calls Netlify Function
  * @param file - Image file to analyze
- * @returns Combined analysis result
+ * @returns Combined analysis result in UI format
  */
 export async function analyzeImageCombined(file: File): Promise<AnalysisResult> {
-  // Step 1: EXIF Metadata Analysis
-  const exifResult = await analyzeExifMetadata(file);
-
-  // Step 2: Gemini AI Analysis
-  let geminiResult: GeminiResult;
   try {
-    geminiResult = await analyzeImageAPI(file);
+    // Call the browser wrapper which uses Netlify Function
+    const result = await analyzeImageMediaAPI(file);
+    
+    // Convert to UI format
+    return convertToAnalysisResult(result, file.name);
   } catch (error) {
-    console.error("Gemini analysis failed:", error);
-    // If Gemini fails, return result based on EXIF only
-    return convertToAnalysisResult(exifResult, null, file.name);
+    console.error("Combined analysis failed:", error);
+    // Return error result
+    return {
+      score: 0,
+      status: "ANALYSIS FAILED",
+      color: "red",
+      anomalies: [
+        {
+          title: "Analysis Error",
+          description: error instanceof Error ? error.message : "Failed to analyze image",
+          severity: "Critical",
+        },
+      ],
+      realityTrace: [{ step: "Error occurred", confidence: 0 }],
+      truthScore: {
+        risk: "HIGH",
+        category: "Analysis Error",
+        impact: "Could not analyze the image",
+        recommendation: "Please try again or contact support.",
+      },
+      sourceMatch: {
+        template: false,
+        online: false,
+        format: "Error",
+      },
+    };
   }
-
-  // Step 3: Combine results
-  return convertToAnalysisResult(exifResult, geminiResult, file.name);
 }
 
 /**
- * Convert EXIF and Gemini results to UI AnalysisResult format
+ * Convert new analysis result format to UI AnalysisResult format
  */
 function convertToAnalysisResult(
-  exifResult: ExifAnalysisResult,
-  geminiResult: GeminiResult | null,
+  result: NewCombinedResult,
   fileName: string
 ): AnalysisResult {
   const anomalies: Anomaly[] = [];
+  const { metadata, forensic } = result;
 
-  // Add EXIF anomalies first
-  exifResult.anomalies.forEach((anomaly) => {
+  // Add metadata anomalies
+  metadata.anomalies.forEach((anomaly) => {
+    // Map severity from new format to UI format
     let severity: Severity = "Medium";
-    const lowerAnomaly = anomaly.toLowerCase();
-    
-    if (lowerAnomaly.includes("no exif") || lowerAnomaly.includes("missing")) {
-      // Missing EXIF is common and not necessarily suspicious - mark as Low severity
-      severity = "Low";
-    } else if (lowerAnomaly.includes("suspicious")) {
+    if (anomaly.severity === "high") {
       severity = "High";
+    } else if (anomaly.severity === "low") {
+      severity = "Low";
+    } else if (anomaly.severity === "none") {
+      severity = "Good";
     }
 
     anomalies.push({
-      title: "EXIF Metadata Issue",
-      description: anomaly,
+      title: "Metadata Analysis",
+      description: anomaly.message,
       severity,
     });
   });
 
-  // Add EXIF metadata info as anomaly if suspicious
-  if (exifResult.suspicious && exifResult.hasExif) {
-    anomalies.push({
-      title: "Metadata Inconsistency",
-      description: `EXIF data present but contains suspicious elements. Camera: ${exifResult.metadata.camera || "Unknown"}, Software: ${exifResult.metadata.software || "Unknown"}`,
-      severity: "Medium",
-    });
-  }
-
-  // Add Gemini results if available
-  if (geminiResult) {
-    // Convert Gemini visual observations to anomalies
-    geminiResult.visual_observations.forEach((obs, index) => {
-      let severity: Severity = "Medium";
-      const lowerObs = obs.toLowerCase();
-      
-      if (lowerObs.includes("critical") || lowerObs.includes("artifact") || lowerObs.includes("manipulation")) {
-        severity = "Critical";
-      } else if (lowerObs.includes("high") || lowerObs.includes("inconsistency") || lowerObs.includes("mismatch")) {
-        severity = "High";
-      } else if (lowerObs.includes("good") || lowerObs.includes("authentic") || lowerObs.includes("genuine")) {
-        severity = "Good";
-      } else if (lowerObs.includes("low") || lowerObs.includes("minor")) {
-        severity = "Low";
-      }
-
-      anomalies.push({
-        title: `Visual Analysis ${index + 1}`,
-        description: obs,
-        severity,
-      });
-    });
-
-    // Add SynthID result if present
-    if (geminiResult.synth_id_result && geminiResult.synth_id_result.toLowerCase().includes("watermark")) {
-      anomalies.unshift({
-        title: "SynthID Watermark Detection",
-        description: geminiResult.synth_id_result,
-        severity: "Critical",
-      });
+  // Add forensic (Gemini) visual observations
+  forensic.visual_observations.forEach((obs, index) => {
+    let severity: Severity = "Medium";
+    const lowerObs = obs.toLowerCase();
+    
+    if (lowerObs.includes("critical") || lowerObs.includes("artifact") || lowerObs.includes("manipulation")) {
+      severity = "Critical";
+    } else if (lowerObs.includes("high") || lowerObs.includes("inconsistency") || lowerObs.includes("mismatch")) {
+      severity = "High";
+    } else if (lowerObs.includes("good") || lowerObs.includes("authentic") || lowerObs.includes("genuine")) {
+      severity = "Good";
+    } else if (lowerObs.includes("low") || lowerObs.includes("minor")) {
+      severity = "Low";
     }
+
+    anomalies.push({
+      title: `Visual Analysis ${index + 1}`,
+      description: obs,
+      severity,
+    });
+  });
+
+  // Add SynthID result if present
+  if (forensic.synth_id_result && forensic.synth_id_result.toLowerCase().includes("watermark")) {
+    anomalies.unshift({
+      title: "SynthID Watermark Detection",
+      description: forensic.synth_id_result,
+      severity: "Critical",
+    });
   }
 
   // Calculate final score based on both analyses
@@ -111,63 +110,67 @@ function convertToAnalysisResult(
   let status: string;
   let color: "red" | "yellow" | "green";
 
-  if (geminiResult) {
-    // Use Gemini verdict as primary, adjust based on EXIF
-    if (geminiResult.overall_verdict === "likely_ai") {
-      score = Math.floor((1 - geminiResult.confidence) * 30) + 10; // 10-40 range
-      // Lower score if EXIF is also suspicious
-      if (exifResult.suspicious) {
-        score = Math.max(5, score - 10);
-      }
-      status = "AI-GENERATED CONTENT DETECTED";
-      color = "red";
-    } else if (geminiResult.overall_verdict === "likely_real") {
-      score = Math.floor(geminiResult.confidence * 20) + 80; // 80-100 range
-      // Only lower score if EXIF has actual suspicious indicators (not just missing data)
-      if (exifResult.suspicious) {
-        score = Math.max(70, score - 10); // Less penalty, trust Gemini more
-      }
-      status = "LIKELY AUTHENTIC";
-      color = "green";
-    } else {
-      score = Math.floor(geminiResult.confidence * 40) + 40; // 40-80 range
-      // Adjust based on EXIF
-      if (exifResult.suspicious) {
-        score = Math.max(30, score - 10);
-      }
-      status = "UNCERTAIN - REVIEW NEEDED";
-      color = "yellow";
+  // Use Gemini verdict as primary
+  if (forensic.overall_verdict === "likely_ai") {
+    score = Math.floor((1 - forensic.confidence) * 30) + 10; // 10-40 range
+    // Lower score if metadata has high severity anomalies
+    if (metadata.anomalies.some(a => a.severity === "high")) {
+      score = Math.max(5, score - 10);
     }
+    status = "AI-GENERATED CONTENT DETECTED";
+    color = "red";
+  } else if (forensic.overall_verdict === "likely_real") {
+    score = Math.floor(forensic.confidence * 20) + 80; // 80-100 range
+    // Only lower score if metadata has high severity anomalies
+    if (metadata.anomalies.some(a => a.severity === "high")) {
+      score = Math.max(70, score - 10);
+    }
+    status = "LIKELY AUTHENTIC";
+    color = "green";
   } else {
-    // Gemini failed, use EXIF only
-    if (exifResult.suspicious) {
-      // Only show suspicious if there are actual red flags, not just missing EXIF
-      score = Math.floor((1 - exifResult.confidence) * 40) + 20; // 20-60 range
-      status = "SUSPICIOUS METADATA";
+    // uncertain verdict
+    score = Math.floor(forensic.confidence * 40) + 40; // 40-80 range
+    // Adjust based on metadata
+    if (metadata.anomalies.some(a => a.severity === "high")) {
+      score = Math.max(30, score - 10);
+    }
+    status = "UNCERTAIN - REVIEW NEEDED";
+    color = "yellow";
+  }
+
+  // Special case: If metadata has no EXIF and confidence is low, lower the score significantly
+  // This fixes the bug where missing EXIF + uncertain/real Gemini was showing 81%
+  if (!metadata.hasExif && metadata.confidence === "low") {
+    // When we have no metadata to verify, be much more conservative
+    // Reduce score significantly to ensure it's in the uncertain/low range
+    if (forensic.overall_verdict === "likely_real") {
+      // Even if Gemini says likely_real, without EXIF we should be more cautious
+      score = Math.max(50, Math.min(70, score - 25)); // Cap at 50-70 range
+      status = "UNCERTAIN - INSUFFICIENT METADATA";
       color = "yellow";
+    } else if (forensic.overall_verdict === "uncertain") {
+      // Uncertain + no EXIF = definitely uncertain, lower score
+      score = Math.max(20, score - 20); // 20-60 range
     } else {
-      // Missing EXIF alone is not suspicious - show as informational
-      score = Math.floor(exifResult.confidence * 30) + 60; // 60-90 range
-      status = exifResult.hasExif ? "METADATA CHECK PASSED" : "METADATA ANALYSIS COMPLETE";
-      color = "green";
+      // likely_ai - already low score, but ensure it stays low
+      score = Math.max(10, score - 10);
     }
   }
 
   // Create reality trace combining both analyses
+  const metadataConfidence = metadata.confidence === "high" ? 90 : metadata.confidence === "medium" ? 60 : 30;
   const realityTrace = [
     {
-      step: exifResult.hasExif ? "EXIF Metadata Extracted" : "No EXIF Data Found",
-      confidence: exifResult.hasExif ? Math.floor(exifResult.confidence * 100) : 0,
+      step: metadata.hasExif ? "EXIF Metadata Extracted" : "No EXIF Data Found",
+      confidence: metadata.hasExif ? metadataConfidence : 0,
     },
     {
-      step: geminiResult ? "AI Visual Analysis Completed" : "AI Analysis Unavailable",
-      confidence: geminiResult ? Math.floor(geminiResult.confidence * 100) : 0,
+      step: "AI Visual Analysis Completed",
+      confidence: Math.floor(forensic.confidence * 100),
     },
     {
       step: "Combined Assessment",
-      confidence: geminiResult
-        ? Math.floor((exifResult.confidence + geminiResult.confidence) / 2 * 100)
-        : Math.floor(exifResult.confidence * 100),
+      confidence: Math.floor((metadataConfidence + forensic.confidence * 100) / 2),
     },
   ];
 
@@ -177,39 +180,29 @@ function convertToAnalysisResult(
   let impact: string;
   let recommendation: string;
 
-  if (geminiResult) {
-    if (geminiResult.overall_verdict === "likely_ai") {
-      risk = "HIGH";
-      category = "AI-Generated Content";
-      impact = geminiResult.explanation;
-      recommendation = exifResult.suspicious
-        ? "Both AI analysis and metadata checks indicate this content is likely generated. Verify source before trusting."
-        : "AI analysis indicates this content is likely generated. Verify source before trusting.";
-    } else if (geminiResult.overall_verdict === "likely_real") {
-      risk = exifResult.suspicious ? "MEDIUM" : "LOW";
-      category = exifResult.suspicious ? "Metadata Concerns" : "Appears Authentic";
-      impact = exifResult.suspicious
-        ? "Content appears authentic but metadata shows inconsistencies"
-        : geminiResult.explanation;
-      recommendation = exifResult.suspicious
-        ? "Content appears authentic but metadata is suspicious. Additional verification recommended."
-        : "Content appears authentic based on analysis.";
-    } else {
-      risk = exifResult.suspicious ? "MEDIUM" : "MEDIUM";
-      category = "Insufficient Data";
-      impact = geminiResult.explanation;
-      recommendation = exifResult.suspicious
-        ? "Analysis is uncertain and metadata is suspicious. Additional verification strongly recommended."
-        : "Additional verification recommended.";
-    }
+  if (forensic.overall_verdict === "likely_ai") {
+    risk = "HIGH";
+    category = "AI-Generated Content";
+    impact = forensic.explanation;
+    recommendation = metadata.anomalies.some(a => a.severity === "high")
+      ? "Both AI analysis and metadata checks indicate this content is likely generated. Verify source before trusting."
+      : "AI analysis indicates this content is likely generated. Verify source before trusting.";
+  } else if (forensic.overall_verdict === "likely_real") {
+    risk = metadata.anomalies.some(a => a.severity === "high") ? "MEDIUM" : "LOW";
+    category = metadata.anomalies.some(a => a.severity === "high") ? "Metadata Concerns" : "Appears Authentic";
+    impact = metadata.anomalies.some(a => a.severity === "high")
+      ? "Content appears authentic but metadata shows inconsistencies"
+      : forensic.explanation;
+    recommendation = metadata.anomalies.some(a => a.severity === "high")
+      ? "Content appears authentic but metadata is suspicious. Additional verification recommended."
+      : "Content appears authentic based on analysis.";
   } else {
-    // Gemini failed
-    risk = exifResult.suspicious ? "MEDIUM" : "LOW";
-    category = "Metadata Analysis Only";
-    impact = exifResult.suspicious
-      ? "Metadata analysis indicates potential issues. Full AI analysis unavailable."
-      : "Metadata check passed. Full AI analysis unavailable.";
-    recommendation = "Please try uploading again for complete analysis.";
+    risk = metadata.anomalies.some(a => a.severity === "high") ? "MEDIUM" : "MEDIUM";
+    category = "Insufficient Data";
+    impact = forensic.explanation;
+    recommendation = metadata.anomalies.some(a => a.severity === "high")
+      ? "Analysis is uncertain and metadata is suspicious. Additional verification strongly recommended."
+      : "Additional verification recommended.";
   }
 
   return {
@@ -225,20 +218,15 @@ function convertToAnalysisResult(
       recommendation,
     },
     sourceMatch: {
-      template: geminiResult && geminiResult.synth_id_result && geminiResult.synth_id_result.includes("watermark")
+      template: forensic.synth_id_result && forensic.synth_id_result.includes("watermark")
         ? false
-        : exifResult.suspicious
+        : metadata.anomalies.some(a => a.severity === "high")
         ? false
         : "N/A",
       online: false,
-      format: geminiResult
-        ? geminiResult.overall_verdict === "likely_ai"
-          ? "Failed AI detection checks"
-          : "Passed basic checks"
-        : exifResult.suspicious
-        ? "Failed metadata checks"
-        : "Passed metadata checks",
+      format: forensic.overall_verdict === "likely_ai"
+        ? "Failed AI detection checks"
+        : "Passed basic checks",
     },
   };
 }
-

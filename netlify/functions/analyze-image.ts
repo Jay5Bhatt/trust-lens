@@ -1,5 +1,5 @@
 import type { Handler } from "@netlify/functions";
-import { analyzeImage } from "../../src/lib/gemini-analysis";
+import { analyzeImageMedia } from "../../src/lib/mediaAnalyzer";
 
 export const handler: Handler = async (event, context) => {
   // Handle CORS
@@ -33,7 +33,8 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    const result = await analyzeImage(mediaData);
+    // mediaData is base64 string, analyzeImageMedia accepts Buffer or string
+    const result = await analyzeImageMedia(mediaData);
 
     return {
       statusCode: 200,
