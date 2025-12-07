@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Shield, CheckCircle, Sparkles, Users, Building2 } from "lucide-react";
+import { ArrowRight, CheckCircle, Sparkles, Users, Building2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { ParticleField } from "./ParticleField";
 
@@ -47,31 +47,21 @@ export function Hero() {
             <span className="text-gradient-vibrant glow-text">Digital Deception</span>
           </motion.h1>
 
-          {/* Subheadline - Better spacing */}
+          {/* Subheadline - Shortened */}
           <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-6 leading-relaxed"
+            className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-12 leading-relaxed"
           >
-            AI-powered forensics that verifies images, videos, screenshots, and documents in seconds
-          </motion.p>
-
-          {/* Description - Shorter and punchier */}
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-base text-muted-foreground/80 max-w-xl mx-auto mb-12"
-          >
-            TrustLens builds the shield against manipulation, AI generation, and digital fraud.
+            Instant truth verification for any digital content—in seconds
           </motion.p>
 
           {/* CTA Button - Single, larger, more prominent */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-16"
           >
             <Button 
@@ -85,72 +75,46 @@ export function Hero() {
             </Button>
           </motion.div>
 
-          {/* Trust indicators - Enhanced with colors and larger icons */}
+          {/* Trust indicators - Enhanced with colors, larger icons (20% bigger), pulse animation */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
             className="flex flex-wrap items-center justify-center gap-10 lg:gap-12"
           >
             <div className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan/20 to-cyan/10 flex items-center justify-center animate-icon-pulse">
-                <CheckCircle className="w-5 h-5 text-cyan" />
-              </div>
+              <motion.div 
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan/20 to-cyan/10 flex items-center justify-center"
+              >
+                <CheckCircle className="w-6 h-6 text-cyan" />
+              </motion.div>
               <span className="text-base text-muted-foreground group-hover:text-foreground transition-colors">Used by educators</span>
             </div>
             <div className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 flex items-center justify-center animate-icon-pulse" style={{ animationDelay: '0.5s' }}>
-                <Building2 className="w-5 h-5 text-emerald-400" />
-              </div>
+              <motion.div 
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 flex items-center justify-center"
+              >
+                <Building2 className="w-6 h-6 text-emerald-400" />
+              </motion.div>
               <span className="text-base text-muted-foreground group-hover:text-foreground transition-colors">Trusted by businesses</span>
             </div>
             <div className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple/20 to-purple/10 flex items-center justify-center animate-icon-pulse" style={{ animationDelay: '1s' }}>
-                <Users className="w-5 h-5 text-purple" />
-              </div>
+              <motion.div 
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple/20 to-purple/10 flex items-center justify-center"
+              >
+                <Users className="w-6 h-6 text-purple" />
+              </motion.div>
               <span className="text-base text-muted-foreground group-hover:text-foreground transition-colors">Built for everyone</span>
             </div>
           </motion.div>
         </div>
-
-        {/* Floating accent card - Only one, minimal */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, delay: 0.8 }}
-          className="mt-20 relative flex justify-center"
-        >
-          <motion.div
-            animate={{ y: [0, -8, 0] }}
-            transition={{ duration: 4, repeat: Infinity }}
-            className="glass-card rounded-2xl px-6 py-4 shadow-lg inline-flex items-center gap-4"
-          >
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan to-purple flex items-center justify-center">
-              <Shield className="w-6 h-6 text-background" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gradient">94%+</div>
-              <div className="text-sm text-muted-foreground">Accuracy Rate</div>
-            </div>
-          </motion.div>
-        </motion.div>
       </div>
-
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
-      >
-        <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex justify-center pt-2"
-        >
-          <div className="w-1 h-2 rounded-full bg-cyan" />
-        </motion.div>
-      </motion.div>
     </section>
   );
 }
