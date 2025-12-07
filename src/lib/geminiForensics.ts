@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import type { GeminiForensicAnalysis, ForensicVerdict } from "./types/media-analysis";
 
 /**
@@ -40,8 +40,9 @@ Be cautious and never claim 100% certainty.`;
 
 /**
  * Get Gemini API client
+ * Returns null if API key is missing (caller should handle gracefully)
  */
-function getGeminiClient(): GoogleGenerativeAI {
+function getGeminiClient(): GoogleGenAI | null {
   let apiKey: string | undefined;
   
   // Try Node.js environment variable first (for server-side/Netlify Functions)
@@ -59,48 +60,54 @@ function getGeminiClient(): GoogleGenerativeAI {
   }
   
   if (!apiKey) {
-    throw new Error(
+    console.error(
       "GEMINI_API_KEY environment variable is not set. " +
-      "Please set GEMINI_API_KEY (for Node.js/Netlify Functions) or VITE_GEMINI_API_KEY (for Vite client-side) " +
-      "before using the analysis functions."
+      "Please set GEMINI_API_KEY (for Node.js/Netlify Functions) or VITE_GEMINI_API_KEY (for Vite client-side)"
     );
+    return null;
   }
-  return new GoogleGenerativeAI(apiKey);
+  return new GoogleGenAI({ apiKey });
 }
 
 /**
  * Validate and parse Gemini forensic analysis result
+ * Returns fallback on validation errors instead of throwing
  */
 function validateForensicResult(data: any): GeminiForensicAnalysis {
   if (!data || typeof data !== "object") {
-    throw new Error("Invalid response: Expected an object");
+    console.error("Invalid response: Expected an object");
+    return createFallbackForensicResult("Invalid response: Expected an object");
   }
 
   if (typeof data.synth_id_result !== "string") {
-    throw new Error("Invalid response: synth_id_result must be a string");
+    console.error("Invalid response: synth_id_result must be a string");
+    return createFallbackForensicResult("Invalid response: synth_id_result must be a string");
   }
 
   if (!Array.isArray(data.visual_observations)) {
-    throw new Error("Invalid response: visual_observations must be an array");
+    console.error("Invalid response: visual_observations must be an array");
+    return createFallbackForensicResult("Invalid response: visual_observations must be an array");
   }
 
   if (!data.visual_observations.every((item: any) => typeof item === "string")) {
-    throw new Error("Invalid response: All visual_observations items must be strings");
+    console.error("Invalid response: All visual_observations items must be strings");
+    return createFallbackForensicResult("Invalid response: All visual_observations items must be strings");
   }
 
   const validVerdicts: ForensicVerdict[] = ["likely_ai", "likely_real", "uncertain"];
   if (!validVerdicts.includes(data.overall_verdict)) {
-    throw new Error(
-      `Invalid response: overall_verdict must be one of: ${validVerdicts.join(", ")}`
-    );
+    console.error(`Invalid response: overall_verdict must be one of: ${validVerdicts.join(", ")}`);
+    return createFallbackForensicResult(`Invalid response: overall_verdict must be one of: ${validVerdicts.join(", ")}`);
   }
 
   if (typeof data.confidence !== "number" || data.confidence < 0 || data.confidence > 1) {
-    throw new Error("Invalid response: confidence must be a number between 0 and 1");
+    console.error("Invalid response: confidence must be a number between 0 and 1");
+    return createFallbackForensicResult("Invalid response: confidence must be a number between 0 and 1");
   }
 
   if (typeof data.explanation !== "string") {
-    throw new Error("Invalid response: explanation must be a string");
+    console.error("Invalid response: explanation must be a string");
+    return createFallbackForensicResult("Invalid response: explanation must be a string");
   }
 
   return {
@@ -114,23 +121,26 @@ function validateForensicResult(data: any): GeminiForensicAnalysis {
 
 /**
  * Parse JSON response from model, handling cases where response has extra text
+ * Returns fallback on parse errors instead of throwing
  */
 function parseForensicResponse(response: string): GeminiForensicAnalysis {
   try {
     // Try to extract JSON from the response (in case there's extra text)
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error("No JSON object found in model response");
+      console.error("No JSON object found in model response");
+      return createFallbackForensicResult("No JSON object found in model response");
     }
 
     const jsonStr = jsonMatch[0];
     const parsed = JSON.parse(jsonStr);
     return validateForensicResult(parsed);
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error(`Failed to parse JSON from model response: ${error.message}`);
-    }
-    throw error;
+    console.error("Failed to parse forensic response:", error);
+    // Return fallback instead of throwing
+    return createFallbackForensicResult(
+      error instanceof Error ? error.message : "Failed to parse JSON response"
+    );
   }
 }
 
@@ -160,19 +170,34 @@ function convertInputToBase64(input: Buffer | Uint8Array | string): string {
 }
 
 /**
+ * Create a safe fallback forensic analysis result for errors
+ */
+function createFallbackForensicResult(errorMessage?: string): GeminiForensicAnalysis {
+  return {
+    overall_verdict: "uncertain",
+    confidence: 0,
+    explanation: "Forensic analysis failed due to a model error.",
+    synth_id_result: "Analysis error",
+    visual_observations: [],
+  };
+}
+
+/**
  * Analyze image with Gemini vision model for forensic analysis
  * @param imageBytes - Image as Uint8Array, Buffer, or base64 string
- * @returns Gemini forensic analysis result
- * @throws Error if API key is missing, input is invalid, or analysis fails
+ * @returns Gemini forensic analysis result (or fallback on error)
  */
 export async function analyzeWithGeminiVision(
   imageBytes: Uint8Array | Buffer | string
 ): Promise<GeminiForensicAnalysis> {
   try {
-    const genAI = getGeminiClient();
+    const ai = getGeminiClient();
     
-    // Use Gemini 1.5 Flash for faster analysis (or Pro for better accuracy)
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // If API key is missing, return fallback
+    if (!ai) {
+      console.error("Gemini API key not available");
+      return createFallbackForensicResult("API key not available");
+    }
     
     // Convert input to base64
     const base64Data = convertInputToBase64(imageBytes);
@@ -180,26 +205,61 @@ export async function analyzeWithGeminiVision(
     // Determine MIME type (default to image/png, can be enhanced)
     const mimeType = "image/png"; // For now, assume PNG. Can be enhanced to detect from input
     
-    // Prepare the image part
-    const imagePart = {
-      inlineData: {
-        data: base64Data,
-        mimeType: mimeType,
+    // Prepare contents array with prompt and image
+    const contents = [
+      {
+        role: "user",
+        parts: [
+          { text: FORENSIC_PROMPT },
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: mimeType,
+            },
+          },
+        ],
       },
-    };
+    ];
     
-    // Generate content with the prompt
-    const result = await model.generateContent([FORENSIC_PROMPT, imagePart]);
-    const response = await result.response;
-    const text = response.text();
+    // Generate content with the new SDK API
+    const result = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: contents,
+    });
+    
+    // Extract text from response
+    // The new SDK response structure - check candidates array
+    let text: string;
+    if (result?.candidates && result.candidates.length > 0) {
+      const candidate = result.candidates[0];
+      if (candidate.content?.parts && candidate.content.parts.length > 0) {
+        const textPart = candidate.content.parts.find((part: any) => part.text);
+        if (textPart?.text) {
+          text = textPart.text;
+        } else {
+          console.error("No text found in response parts");
+          return createFallbackForensicResult("No text found in Gemini API response");
+        }
+      } else {
+        console.error("No content parts found in response");
+        return createFallbackForensicResult("No content parts found in Gemini API response");
+      }
+    } else {
+      console.error("No candidates found in response:", result);
+      return createFallbackForensicResult("No candidates found in Gemini API response");
+    }
     
     // Parse and validate the response
     return parseForensicResponse(text);
   } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Gemini forensic analysis failed: ${error.message}`);
-    }
-    throw new Error(`Gemini forensic analysis failed: ${String(error)}`);
+    // Log error for debugging but return fallback instead of throwing
+    console.error("Gemini forensic analysis error:", error);
+    
+    // Return safe fallback - do NOT throw errors
+    // This allows the analysis to continue with metadata-only results
+    return createFallbackForensicResult(
+      error instanceof Error ? error.message : String(error)
+    );
   }
 }
 
