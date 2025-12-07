@@ -150,8 +150,14 @@ function getGeminiClient(): GoogleGenerativeAI {
   }
   
   // Fallback to Vite environment variable (for browser/client-side)
-  if (!apiKey && typeof import !== 'undefined' && import.meta && import.meta.env) {
-    apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    try {
+      // In Vite, import.meta.env always exists, but the key might be undefined
+      apiKey = import.meta?.env?.VITE_GEMINI_API_KEY;
+    } catch (e) {
+      // import.meta not available (shouldn't happen in Vite, but be safe)
+      apiKey = undefined;
+    }
   }
   
   if (!apiKey) {
