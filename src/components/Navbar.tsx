@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { Button } from "./ui/button";
-import logo from "@/assets/trustlens-logo.png";
+// full + icon files
+import fullLogo from "@/assets/trustlens-logo.png";
+import iconLogo from "@/assets/trustlens-icon.png";
 
 const navLinks = [
   { name: "Features", href: "#features" },
@@ -46,13 +48,38 @@ export function Navbar() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-20">
-            {/* Logo */}
+            {/* --- UPDATED LOGO AREA --- */}
             <motion.a
               href="#"
-              className="flex items-center gap-2"
-              whileHover={{ scale: 1.02 }}
+              className="flex items-center gap-2 select-none"
+              animate={{ scale: isScrolled ? 0.8 : 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 18 }}
             >
-              <img src={logo} alt="TrustLens" className="h-8 w-auto" />
+              <AnimatePresence mode="wait">
+                {!isScrolled ? (
+                  <motion.img
+                    key="full"
+                    src={fullLogo}
+                    alt="TrustLens Full"
+                    className="h-12 w-auto"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.2 }}
+                  />
+                ) : (
+                  <motion.img
+                    key="icon"
+                    src={iconLogo}
+                    alt="TrustLens Icon"
+                    className="h-10 w-10"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.2 }}
+                  />
+                )}
+              </AnimatePresence>
             </motion.a>
 
             {/* Desktop Navigation */}

@@ -61,9 +61,10 @@ export function DemoSection() {
   }, [analyzeWithExif]);
 
   const handleExampleSelect = useCallback((key: string) => {
-    setUploadedImage(null);
+    const exampleResult = exampleResults[key];
+    setUploadedImage(exampleResult.exampleImage || null);
     setState("analyzing");
-    setResult(exampleResults[key]);
+    setResult(exampleResult);
   }, []);
 
   const handleAnalysisComplete = useCallback(() => setState("results"), []);

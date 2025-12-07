@@ -54,17 +54,30 @@ export function ResultsDashboard({ result, onReset, uploadedImage }: ResultsDash
             className="glass-card rounded-3xl p-6 md:p-8"
           >
             <h4 className="font-bold text-lg mb-4">Visual Analysis</h4>
-            <div className="relative rounded-2xl overflow-hidden bg-muted/30">
+            <div className="relative rounded-2xl overflow-hidden bg-muted/30 border border-border/50">
               <img
                 src={uploadedImage}
                 alt="Uploaded content"
-                className="w-full h-48 object-contain"
+                className="w-full max-h-[400px] object-contain"
+                style={{ maxWidth: '100%', maxHeight: '400px' }}
+                onLoad={(e) => {
+                  // Image loaded successfully
+                  e.currentTarget.style.opacity = '1';
+                }}
+                onError={(e) => {
+                  // Handle image load error
+                  console.error('Failed to load image');
+                }}
               />
+              {/* Loading skeleton (hidden when image loads) */}
+              <div className="absolute inset-0 bg-muted/20 animate-pulse flex items-center justify-center" style={{ display: 'none' }} id="image-skeleton">
+                <div className="text-muted-foreground text-sm">Loading image...</div>
+              </div>
               {/* Anomaly overlays would go here for a real implementation */}
               {result.color === "red" && (
-                <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center">
-                  <div className="px-4 py-2 rounded-lg bg-red-500/80 text-white font-bold text-sm">
-                    MANIPULATION DETECTED
+                <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center pointer-events-none">
+                  <div className="px-4 py-2 rounded-lg bg-red-500/80 text-white font-bold text-sm backdrop-blur-sm">
+                    {result.status}
                   </div>
                 </div>
               )}

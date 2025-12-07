@@ -361,4 +361,18 @@
   .spotlight {
     background: radial-gradient(ellipse 80% 50% at 50% 0%, hsl(var(--cyan) / 0.15) 0%, transparent 70%);
   }
+
+  /* Upload area hover effects - subtle glow animation */
+  .upload-area-container:hover {
+    box-shadow: 0 0 30px rgba(94, 247, 166, 0.3), 0 0 60px rgba(139, 92, 246, 0.2) !important;
+  }
+
+  .upload-area-container:hover .upload-area-border rect {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 4px rgba(94, 247, 166, 0.5));
+  }
+
+  .upload-area-dragging {
+    border-color: #5EF7A6 !important;
+  }
 }

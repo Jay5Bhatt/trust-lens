@@ -35,11 +35,17 @@ export type AnalysisResult = {
   exampleImage?: string;
 };
 
+// Import example images
+import fakeUpiImage from "../../assets/examples/fake-upi.svg";
+import fakeWhatsappImage from "../../assets/examples/fake-whatsapp.svg";
+import aiGeneratedImage from "../../assets/examples/ai-generated.svg";
+
 export const exampleResults: Record<string, AnalysisResult> = {
   "fake-upi": {
     score: 23,
     status: "MANIPULATION DETECTED",
     color: "red",
+    exampleImage: fakeUpiImage,
     anomalies: [
       {
         title: "Template Format Mismatch",
@@ -84,6 +90,7 @@ export const exampleResults: Record<string, AnalysisResult> = {
     score: 31,
     status: "MANIPULATION DETECTED",
     color: "red",
+    exampleImage: fakeWhatsappImage,
     anomalies: [
       {
         title: "UI Spacing Error",
@@ -127,6 +134,7 @@ export const exampleResults: Record<string, AnalysisResult> = {
     score: 12,
     status: "AI-GENERATED CONTENT",
     color: "red",
+    exampleImage: aiGeneratedImage,
     anomalies: [
       {
         title: "Diffusion Artifacts Detected",
