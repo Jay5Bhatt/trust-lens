@@ -142,13 +142,17 @@ function parseAndValidateResponse(response: string): AnalysisResult {
  * Supports both Node.js (process.env) and Vite (import.meta.env) environments
  */
 function getGeminiClient(): GoogleGenerativeAI {
-  // Try Vite environment variable first (for browser/client-side in Vite)
-  const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
+  let apiKey: string | undefined;
   
-  // Fallback to Node.js environment variable (for server-side)
-  const nodeKey = typeof process !== 'undefined' && process.env?.GEMINI_API_KEY;
+  // Try Node.js environment variable first (for server-side/Netlify Functions)
+  if (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) {
+    apiKey = process.env.GEMINI_API_KEY;
+  }
   
-  const apiKey = viteKey || nodeKey;
+  // Fallback to Vite environment variable (for browser/client-side)
+  if (!apiKey && typeof import !== 'undefined' && import.meta && import.meta.env) {
+    apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  }
   
   if (!apiKey) {
     throw new Error(

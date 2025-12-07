@@ -8,7 +8,7 @@ import { AnalysisAnimation } from "./demo/AnalysisAnimation";
 import { ResultsDashboard } from "./demo/ResultsDashboard";
 import { EmptyState } from "./demo/EmptyState";
 import { exampleResults, type AnalysisResult, type Anomaly, type Severity } from "./demo/types";
-import { analyzeImageAPI, type AnalysisResult as GeminiResult } from "@/lib/gemini-analysis";
+import { analyzeImageCombined } from "@/lib/combined-analysis";
 
 type DemoState = "idle" | "analyzing" | "results";
 
@@ -23,107 +23,15 @@ export function DemoSection() {
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
-   * Convert Gemini API result to UI AnalysisResult format
+   * Analyze file using 2-step process: EXIF metadata + Gemini AI
    */
-  const convertGeminiResult = useCallback((geminiResult: GeminiResult, fileName: string): AnalysisResult => {
-    // Map overall_verdict to score, status, and color
-    let score: number;
-    let status: string;
-    let color: "red" | "yellow" | "green";
-    
-    if (geminiResult.overall_verdict === "likely_ai") {
-      score = Math.floor((1 - geminiResult.confidence) * 30) + 10; // 10-40 range
-      status = "AI-GENERATED CONTENT DETECTED";
-      color = "red";
-    } else if (geminiResult.overall_verdict === "likely_real") {
-      score = Math.floor(geminiResult.confidence * 20) + 80; // 80-100 range
-      status = "LIKELY AUTHENTIC";
-      color = "green";
-    } else {
-      score = Math.floor(geminiResult.confidence * 40) + 40; // 40-80 range
-      status = "UNCERTAIN - REVIEW NEEDED";
-      color = "yellow";
-    }
-
-    // Convert visual_observations to Anomaly format
-    const anomalies: Anomaly[] = geminiResult.visual_observations.map((obs, index) => {
-      // Determine severity based on verdict and observation content
-      let severity: Severity = "Medium";
-      const lowerObs = obs.toLowerCase();
-      
-      if (lowerObs.includes("critical") || lowerObs.includes("artifact") || lowerObs.includes("manipulation")) {
-        severity = "Critical";
-      } else if (lowerObs.includes("high") || lowerObs.includes("inconsistency") || lowerObs.includes("mismatch")) {
-        severity = "High";
-      } else if (lowerObs.includes("good") || lowerObs.includes("authentic") || lowerObs.includes("genuine")) {
-        severity = "Good";
-      } else if (lowerObs.includes("low") || lowerObs.includes("minor")) {
-        severity = "Low";
-      }
-
-      return {
-        title: `Observation ${index + 1}`,
-        description: obs,
-        severity,
-      };
-    });
-
-    // Add SynthID result as an anomaly if present
-    if (geminiResult.synth_id_result && geminiResult.synth_id_result.toLowerCase().includes("watermark")) {
-      anomalies.unshift({
-        title: "SynthID Watermark Detection",
-        description: geminiResult.synth_id_result,
-        severity: "Critical" as Severity,
-      });
-    }
-
-    // Create reality trace from confidence and verdict
-    const realityTrace = [
-      { step: geminiResult.overall_verdict === "likely_ai" ? "AI Generation Detected" : "Source Analysis", confidence: Math.floor(geminiResult.confidence * 100) },
-      { step: "Visual Forensics Completed", confidence: Math.floor(geminiResult.confidence * 90) },
-      { step: "Final Assessment", confidence: Math.floor(geminiResult.confidence * 95) },
-    ];
-
-    // Map to truth score
-    const risk = geminiResult.overall_verdict === "likely_ai" ? "HIGH" : 
-                 geminiResult.overall_verdict === "likely_real" ? "LOW" : "MEDIUM";
-    
-    const truthScore = {
-      risk: risk as "HIGH" | "MEDIUM" | "LOW",
-      category: geminiResult.overall_verdict === "likely_ai" ? "AI-Generated Content" : 
-                geminiResult.overall_verdict === "likely_real" ? "Appears Authentic" : "Insufficient Data",
-      impact: geminiResult.explanation,
-      recommendation: geminiResult.overall_verdict === "likely_ai" 
-        ? "This content appears to be AI-generated. Verify source before trusting."
-        : geminiResult.overall_verdict === "likely_real"
-        ? "Content appears authentic based on analysis."
-        : "Additional verification recommended.",
-    };
-
-    return {
-      score,
-      status,
-      color,
-      anomalies,
-      realityTrace,
-      truthScore,
-      sourceMatch: {
-        template: geminiResult.synth_id_result && geminiResult.synth_id_result.includes("watermark") ? false : "N/A",
-        online: false,
-        format: geminiResult.overall_verdict === "likely_ai" ? "Failed AI detection checks" : "Passed basic checks",
-      },
-    };
-  }, []);
-
-  /**
-   * Analyze file using Gemini API
-   */
-  const analyzeWithGemini = useCallback(async (file: File): Promise<AnalysisResult> => {
+  const analyzeWithCombined = useCallback(async (file: File): Promise<AnalysisResult> => {
     try {
-      const geminiResult = await analyzeImageAPI(file);
-      return convertGeminiResult(geminiResult, file.name);
+      // This performs both EXIF and Gemini analysis
+      const result = await analyzeImageCombined(file);
+      return result;
     } catch (error) {
-      console.error("Gemini analysis failed:", error);
+      console.error("Combined analysis failed:", error);
       // Fallback to basic analysis on error
       return {
         score: 50,
@@ -150,7 +58,7 @@ export function DemoSection() {
         },
       };
     }
-  }, [convertGeminiResult]);
+  }, []);
 
   const handleFileSelect = useCallback(async (file: File) => {
     const imageUrl = URL.createObjectURL(file);
@@ -159,8 +67,8 @@ export function DemoSection() {
     analysisReadyRef.current = false;
     
     try {
-      // Start analysis in parallel with animation
-      const analysisResult = await analyzeWithGemini(file);
+      // Start 2-step analysis (EXIF + Gemini) in parallel with animation
+      const analysisResult = await analyzeWithCombined(file);
       setResult(analysisResult);
       analysisReadyRef.current = true;
     } catch (error) {
@@ -192,13 +100,16 @@ export function DemoSection() {
       });
       analysisReadyRef.current = true;
     }
-  }, [analyzeWithGemini]);
+  }, [analyzeWithCombined]);
 
   const handleExampleSelect = useCallback((key: string) => {
+    // Examples use mock data - no API calls needed
     const exampleResult = exampleResults[key];
     setUploadedImage(exampleResult.exampleImage || null);
     setState("analyzing");
     setResult(exampleResult);
+    // Mark as ready immediately since examples don't need real analysis
+    analysisReadyRef.current = true;
   }, []);
 
   const handleAnalysisComplete = useCallback(() => {
