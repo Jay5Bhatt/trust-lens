@@ -1,73 +1,162 @@
-# Welcome to your Lovable project
 
-## Project info
+<div align="center">
 
-**URL**: https://lovable.dev/projects/a8adb875-6dd1-45da-9dd2-3a924dab1862
+<img src="https://s6.imgcdn.dev/YT51NN.png" alt="TrustLens Logo" border="0">
 
-## How can I edit this code?
+# 🔍 TRUSTLENS  
+### **Digital Content Forensics for Everyone**
 
-There are several ways of editing your application.
+**Detect. Verify. Trust.**  
+A next-generation platform built to verify the authenticity of images, screenshots, videos, and digital documents in a world where manipulation is effortless.
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/a8adb875-6dd1-45da-9dd2-3a924dab1862) and start prompting.
+</div>
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🚨 Why TrustLens?
 
-**Use your preferred IDE**
+The line between *real* and *fake* has never been thinner.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+AI tools like Sora, VEO, Midjourney, and Runway can generate hyper-realistic content.  
+Fake UPI receipts, edited WhatsApp chats, AI-generated videos, and fabricated school notices are spreading faster than truth.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+> **The world has tools to CREATE fake content — TrustLens is the tool that verifies it.**
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🧠 What TrustLens Does
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+When a user uploads content, TrustLens produces:
 
-# Step 3: Install the necessary dependencies.
-npm i
+| Feature | Description |
+|--------|------------|
+| **🧪 Authenticity Score** | Probability of content being real, edited, or fully generated. |
+| **⚠️ Anomaly Highlights** | Detects pixel inconsistencies, UI spacing errors, AI fingerprints, and more. |
+| **🧬 Reality Trace™** | Reconstructs how the content was likely created (camera → edit → screenshot → AI → export…). |
+| **🛡 TruthScore+™** | Shows risk impact (financial/social/identity/reputation). |
+| **🔁 Source Match Shield™** | Checks web presence, template matching, metadata, perceptual hash similarity. |
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+---
 
-**Edit a file directly in GitHub**
+## ✨ Core Capability Highlights
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- ✔ Image forensic analysis  
+- ✔ Video frame-level consistency detection  
+- ✔ Screenshot authenticity verification  
+- ✔ Document & UPI receipt template matching  
+- ✔ Deepfake + AI trace detection  
+- ✔ Metadata & recompression signature analysis  
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🚀 Why TrustLens Is Different
 
-## What technologies are used for this project?
+Most tools answer:
 
-This project is built with:
+> ❓ “Is this AI?”
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+TrustLens answers:
 
-## How can I deploy this project?
+> 🧬 “How was this created?”
+> ⚠️ “Can it cause harm?”
+> 🛡 “Should it be trusted?”
 
-Simply open [Lovable](https://lovable.dev/projects/a8adb875-6dd1-45da-9dd2-3a924dab1862) and click on Share -> Publish.
+TrustLens combines:
 
-## Can I connect a custom domain to my Lovable project?
+- Forensic image science  
+- Computer vision  
+- AI artifact detection  
+- Context-aware rule systems  
+- Creation-path reconstruction  
+- Risk intelligence scoring  
 
-Yes, you can!
+No existing AI detectors do this.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## 👥 Who Is This For?
+
+- Students & teachers  
+- Small businesses & sellers  
+- Parents & communities  
+- Investigators & journalists  
+- Social media users  
+- Anyone who wants certainty before sharing or believing content  
+
+Manipulation affects **everyone** — TrustLens protects everyone.
+
+---
+
+## 🧩 Technology Stack (Concept)
+
+⚙️ TrustLens Forensics Stack
+
+🔍 Visual Integrity Engine — ELA, FFT, lighting physics checks
+
+🤖 Synthetic Artifact Scanner — Hybrid CNN + Transformer detection
+
+🧩 UI & Document Pattern Analyzer — Fonts, layout rules, timestamp logic
+
+🪪 Metadata & Signature Intelligence — Compression + device trace analysis
+
+🧬 Reality Trace™ Constructor — Creation path probability mapping
+
+🌐 Source Match Shield™ — OCR, perceptual hash matching, known format recognition
+
+Latency Goal: **2–5s images | 6–12s video clips**  
+False positives target: **≤10%**
+
+---
+
+## 📦 Project Status
+
+| Stage | Status |
+|-------|--------|
+| Concept | ✅ Completed |
+| MVP Build | ✅ Completed  |
+| Dataset Curation | 🛠 In Progress |
+| UI/UX Prototype | ✅ Completed  |
+| API/SDK | 📌 Future |
+
+---
+
+## 🛣 Roadmap
+
+- [ ] MVP Web Scanner  
+- [ ] Screenshot Authentication Engine  
+- [ ] UPI & Document Template Dataset  
+- [ ] Browser Extension  
+- [ ] Mobile App  
+- [ ] API for Trust Badges & Verification  
+- [ ] Enterprise Dashboard  
+
+---
+
+## 🏛 Ethics & Governance
+
+TrustLens is built with a **security-first moral framework**:
+
+- 🔒 User content is never stored unless permission is granted  
+- 🚫 No detection-bypass assistance  
+- 🛑 Restricted use for harassment or unauthorized surveillance  
+- 🧭 Transparency and consent are mandatory  
+
+---
+
+## 🧭 Vision
+
+While the world is building tools to **forge reality**, TrustLens builds the shield that protects it.
+
+> **Truth shouldn’t be a guessing game.**  
+> TrustLens makes it verifiable.
+
+---
+
+<div align="center">
+
+### ⭐ If you believe digital truth deserves protection, give this repo a star.
+
+Built for the next era of the internet —  
+Where trust is a feature, not an assumption.
+
+</div>
