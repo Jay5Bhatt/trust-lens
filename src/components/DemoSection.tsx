@@ -2,25 +2,42 @@ import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
-import { Zap } from "lucide-react";
+import { Zap, Image, FileText } from "lucide-react";
 import { UploadArea } from "./demo/UploadArea";
+import { TextUploadArea } from "./demo/TextUploadArea";
 import { AnalysisAnimation } from "./demo/AnalysisAnimation";
 import { ResultsDashboard } from "./demo/ResultsDashboard";
+import { PlagiarismResults } from "./demo/PlagiarismResults";
 import { EmptyState } from "./demo/EmptyState";
+import { PlagiarismEmptyState } from "./demo/PlagiarismEmptyState";
 import { exampleResults, type AnalysisResult, type Anomaly, type Severity } from "./demo/types";
 import { analyzeImageCombined } from "@/lib/combined-analysis";
+import { checkPlagiarismAPI } from "@/lib/plagiarismChecker-browser";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
+import type { PlagiarismReport } from "@/lib/types/plagiarism";
 
 type DemoState = "idle" | "analyzing" | "results";
+type TabValue = "image" | "text";
 
 export function DemoSection() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const [state, setState] = useState<DemoState>("idle");
+  const [activeTab, setActiveTab] = useState<TabValue>("image");
+  
+  // Image analysis state
+  const [imageState, setImageState] = useState<DemoState>("idle");
   const [isDragging, setIsDragging] = useState(false);
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [imageResult, setImageResult] = useState<AnalysisResult | null>(null);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const analysisReadyRef = useRef(false);
-  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const imageAnalysisReadyRef = useRef(false);
+  const imageCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Text analysis state
+  const [textState, setTextState] = useState<DemoState>("idle");
+  const [isTextDragging, setIsTextDragging] = useState(false);
+  const [textResult, setTextResult] = useState<PlagiarismReport | null>(null);
+  const textAnalysisReadyRef = useRef(false);
+  const textCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Analyze file using 2-step process: EXIF metadata + Gemini AI
@@ -63,18 +80,18 @@ export function DemoSection() {
   const handleFileSelect = useCallback(async (file: File) => {
     const imageUrl = URL.createObjectURL(file);
     setUploadedImage(imageUrl);
-    setState("analyzing");
-    analysisReadyRef.current = false;
+    setImageState("analyzing");
+    imageAnalysisReadyRef.current = false;
     
     try {
       // Start 2-step analysis (EXIF + Gemini) in parallel with animation
       const analysisResult = await analyzeWithCombined(file);
-      setResult(analysisResult);
-      analysisReadyRef.current = true;
+      setImageResult(analysisResult);
+      imageAnalysisReadyRef.current = true;
     } catch (error) {
       console.error("Analysis error:", error);
       // Set error result
-      setResult({
+      setImageResult({
         score: 0,
         status: "ANALYSIS FAILED",
         color: "red",
@@ -98,7 +115,7 @@ export function DemoSection() {
           format: "Error",
         },
       });
-      analysisReadyRef.current = true;
+      imageAnalysisReadyRef.current = true;
     }
   }, [analyzeWithCombined]);
 
@@ -106,57 +123,156 @@ export function DemoSection() {
     // Examples use mock data - no API calls needed
     const exampleResult = exampleResults[key];
     setUploadedImage(exampleResult.exampleImage || null);
-    setState("analyzing");
-    setResult(exampleResult);
+    setImageState("analyzing");
+    setImageResult(exampleResult);
     // Mark as ready immediately since examples don't need real analysis
-    analysisReadyRef.current = true;
+    imageAnalysisReadyRef.current = true;
   }, []);
 
-  const handleAnalysisComplete = useCallback(() => {
+  /**
+   * Handle text submission for plagiarism checking
+   */
+  const handleTextSubmit = useCallback(async (text: string) => {
+    setTextState("analyzing");
+    textAnalysisReadyRef.current = false;
+
+    try {
+      const result = await checkPlagiarismAPI({ text });
+      setTextResult(result);
+      textAnalysisReadyRef.current = true;
+    } catch (error) {
+      console.error("Plagiarism check error:", error);
+      setTextResult({
+        normalizedTextLength: text.length,
+        plagiarismPercentage: 0,
+        riskLevel: "low",
+        suspiciousSegments: [],
+        aiGeneratedLikelihood: 0,
+        aiVerdict: "uncertain",
+        explanation: `Analysis failed: ${error instanceof Error ? error.message : "Unknown error"}. Please try again.`,
+      });
+      textAnalysisReadyRef.current = true;
+    }
+  }, []);
+
+  /**
+   * Handle file upload for plagiarism checking
+   */
+  const handleTextFileSelect = useCallback(async (file: File) => {
+    setTextState("analyzing");
+    textAnalysisReadyRef.current = false;
+
+    try {
+      const result = await checkPlagiarismAPI({
+        fileBuffer: file,
+        fileName: file.name,
+      });
+      setTextResult(result);
+      textAnalysisReadyRef.current = true;
+    } catch (error) {
+      console.error("Plagiarism check error:", error);
+      setTextResult({
+        normalizedTextLength: 0,
+        plagiarismPercentage: 0,
+        riskLevel: "low",
+        suspiciousSegments: [],
+        aiGeneratedLikelihood: 0,
+        aiVerdict: "uncertain",
+        explanation: `Analysis failed: ${error instanceof Error ? error.message : "Unknown error"}. Please try again.`,
+      });
+      textAnalysisReadyRef.current = true;
+    }
+  }, []);
+
+  const handleImageAnalysisComplete = useCallback(() => {
     // Clear any existing interval first
-    if (checkIntervalRef.current) {
-      clearInterval(checkIntervalRef.current);
-      checkIntervalRef.current = null;
+    if (imageCheckIntervalRef.current) {
+      clearInterval(imageCheckIntervalRef.current);
+      imageCheckIntervalRef.current = null;
     }
 
     // Check if analysis is ready, if not wait a bit
-    if (analysisReadyRef.current) {
-      setState("results");
+    if (imageAnalysisReadyRef.current) {
+      setImageState("results");
     } else {
       // Wait for analysis to complete (poll every 200ms, max 15 seconds)
       let attempts = 0;
       const maxAttempts = 75; // 15 seconds / 200ms
       
-      checkIntervalRef.current = setInterval(() => {
+      imageCheckIntervalRef.current = setInterval(() => {
         attempts++;
-        if (analysisReadyRef.current || attempts >= maxAttempts) {
-          if (checkIntervalRef.current) {
-            clearInterval(checkIntervalRef.current);
-            checkIntervalRef.current = null;
+        if (imageAnalysisReadyRef.current || attempts >= maxAttempts) {
+          if (imageCheckIntervalRef.current) {
+            clearInterval(imageCheckIntervalRef.current);
+            imageCheckIntervalRef.current = null;
           }
-          setState("results");
+          setImageState("results");
         }
       }, 200);
     }
   }, []);
-  const handleReset = useCallback(() => {
-    // Clean up any running intervals
-    if (checkIntervalRef.current) {
-      clearInterval(checkIntervalRef.current);
-      checkIntervalRef.current = null;
+
+  const handleTextAnalysisComplete = useCallback(() => {
+    // Clear any existing interval first
+    if (textCheckIntervalRef.current) {
+      clearInterval(textCheckIntervalRef.current);
+      textCheckIntervalRef.current = null;
     }
-    setState("idle");
-    setResult(null);
-    setUploadedImage(null);
-    analysisReadyRef.current = false;
+
+    // Check if analysis is ready, if not wait a bit
+    if (textAnalysisReadyRef.current) {
+      setTextState("results");
+    } else {
+      // Wait for analysis to complete (poll every 200ms, max 15 seconds)
+      let attempts = 0;
+      const maxAttempts = 75; // 15 seconds / 200ms
+      
+      textCheckIntervalRef.current = setInterval(() => {
+        attempts++;
+        if (textAnalysisReadyRef.current || attempts >= maxAttempts) {
+          if (textCheckIntervalRef.current) {
+            clearInterval(textCheckIntervalRef.current);
+            textCheckIntervalRef.current = null;
+          }
+          setTextState("results");
+        }
+      }, 200);
+    }
   }, []);
 
-  // Cleanup interval on unmount
+  const handleImageReset = useCallback(() => {
+    // Clean up any running intervals
+    if (imageCheckIntervalRef.current) {
+      clearInterval(imageCheckIntervalRef.current);
+      imageCheckIntervalRef.current = null;
+    }
+    setImageState("idle");
+    setImageResult(null);
+    setUploadedImage(null);
+    imageAnalysisReadyRef.current = false;
+  }, []);
+
+  const handleTextReset = useCallback(() => {
+    // Clean up any running intervals
+    if (textCheckIntervalRef.current) {
+      clearInterval(textCheckIntervalRef.current);
+      textCheckIntervalRef.current = null;
+    }
+    setTextState("idle");
+    setTextResult(null);
+    textAnalysisReadyRef.current = false;
+  }, []);
+
+  // Cleanup intervals on unmount
   useEffect(() => {
     return () => {
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-        checkIntervalRef.current = null;
+      if (imageCheckIntervalRef.current) {
+        clearInterval(imageCheckIntervalRef.current);
+        imageCheckIntervalRef.current = null;
+      }
+      if (textCheckIntervalRef.current) {
+        clearInterval(textCheckIntervalRef.current);
+        textCheckIntervalRef.current = null;
       }
     };
   }, []);
@@ -176,22 +292,64 @@ export function DemoSection() {
             <span className="text-sm font-medium text-muted-foreground">Live Demo</span>
           </div>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">See It <span className="text-gradient-vibrant">In Action</span></h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">Upload any image and watch TrustLens reveal the truth</p>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">Analyze images or check text for plagiarism and AI-generated content</p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 40 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, delay: 0.2 }} className="glass-card rounded-[2rem] p-6 md:p-10 shadow-card border-cyan/20">
-          <div className="grid lg:grid-cols-5 gap-8 lg:gap-10">
-            <div className="lg:col-span-2">
-              <UploadArea onFileSelect={handleFileSelect} onExampleSelect={handleExampleSelect} isDragging={isDragging} setIsDragging={setIsDragging} disabled={state === "analyzing"} />
-            </div>
-            <div className="lg:col-span-3">
-              <AnimatePresence mode="wait">
-                {state === "idle" && <EmptyState key="empty" />}
-                {state === "analyzing" && <AnalysisAnimation key="analyzing" onComplete={handleAnalysisComplete} />}
-                {state === "results" && result && <ResultsDashboard key="results" result={result} onReset={handleReset} uploadedImage={uploadedImage || undefined} />}
-              </AnimatePresence>
-            </div>
-          </div>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="w-full">
+            <TabsList className="glass-card mb-8 w-full max-w-md mx-auto grid grid-cols-2">
+              <TabsTrigger value="image" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan/20 data-[state=active]:to-purple/20">
+                <Image className="w-4 h-4" />
+                Image Analysis
+              </TabsTrigger>
+              <TabsTrigger value="text" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan/20 data-[state=active]:to-purple/20">
+                <FileText className="w-4 h-4" />
+                Text/Plagiarism Check
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="image" className="mt-0">
+              <div className="grid lg:grid-cols-5 gap-8 lg:gap-10">
+                <div className="lg:col-span-2">
+                  <UploadArea 
+                    onFileSelect={handleFileSelect} 
+                    onExampleSelect={handleExampleSelect} 
+                    isDragging={isDragging} 
+                    setIsDragging={setIsDragging} 
+                    disabled={imageState === "analyzing"} 
+                  />
+                </div>
+                <div className="lg:col-span-3">
+                  <AnimatePresence mode="wait">
+                    {imageState === "idle" && <EmptyState key="empty" />}
+                    {imageState === "analyzing" && <AnalysisAnimation key="analyzing" onComplete={handleImageAnalysisComplete} />}
+                    {imageState === "results" && imageResult && <ResultsDashboard key="results" result={imageResult} onReset={handleImageReset} uploadedImage={uploadedImage || undefined} />}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="text" className="mt-0">
+              <div className="grid lg:grid-cols-5 gap-8 lg:gap-10">
+                <div className="lg:col-span-2">
+                  <TextUploadArea 
+                    onTextSubmit={handleTextSubmit}
+                    onFileSelect={handleTextFileSelect}
+                    isDragging={isTextDragging}
+                    setIsDragging={setIsTextDragging}
+                    disabled={textState === "analyzing"}
+                  />
+                </div>
+                <div className="lg:col-span-3">
+                  <AnimatePresence mode="wait">
+                    {textState === "idle" && <PlagiarismEmptyState key="empty" />}
+                    {textState === "analyzing" && <AnalysisAnimation key="analyzing" onComplete={handleTextAnalysisComplete} />}
+                    {textState === "results" && textResult && <PlagiarismResults key="results" result={textResult} onReset={handleTextReset} />}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </motion.div>
       </div>
     </section>
