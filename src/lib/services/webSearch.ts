@@ -60,8 +60,23 @@ export async function searchWebForChunk(
 
     return results;
   } catch (error) {
+    // Check if this is a critical error (502, 5xx, network error) - if so, rethrow
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (
+      errorMessage.includes("502") ||
+      errorMessage.includes("500") ||
+      errorMessage.includes("503") ||
+      errorMessage.includes("504") ||
+      errorMessage.includes("5xx") ||
+      errorMessage.includes("network") ||
+      errorMessage.includes("fetch failed") ||
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("SerpAPI request failed")
+    ) {
+      throw error; // Re-throw critical errors so they propagate to plagiarismChecker
+    }
+    // For non-critical errors, log and return empty array
     console.error("Web search error:", error);
-    // Return empty array on error - caller will handle gracefully
     return [];
   }
 }

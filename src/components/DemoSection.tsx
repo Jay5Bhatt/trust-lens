@@ -17,7 +17,7 @@ import { checkPlagiarismAPI } from "@/lib/plagiarismChecker-browser";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import type { PlagiarismReport } from "@/lib/types/plagiarism";
 
-type DemoState = "idle" | "analyzing" | "results";
+type DemoState = "idle" | "analyzing" | "results" | "error";
 type TabValue = "image" | "text";
 
 export function DemoSection() {
@@ -37,6 +37,7 @@ export function DemoSection() {
   const [textState, setTextState] = useState<DemoState>("idle");
   const [isTextDragging, setIsTextDragging] = useState(false);
   const [textResult, setTextResult] = useState<PlagiarismReport | null>(null);
+  const [textError, setTextError] = useState<{ message: string; errorType?: string } | null>(null);
   const textAnalysisReadyRef = useRef(false);
   const textCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -135,23 +136,21 @@ export function DemoSection() {
    */
   const handleTextSubmit = useCallback(async (text: string) => {
     setTextState("analyzing");
+    setTextError(null);
+    setTextResult(null);
     textAnalysisReadyRef.current = false;
 
     try {
       const result = await checkPlagiarismAPI({ text });
       setTextResult(result);
+      setTextState("results");
       textAnalysisReadyRef.current = true;
     } catch (error) {
       console.error("Plagiarism check error:", error);
-      setTextResult({
-        normalizedTextLength: text.length,
-        plagiarismPercentage: 0,
-        riskLevel: "low",
-        suspiciousSegments: [],
-        aiGeneratedLikelihood: 0,
-        aiVerdict: "uncertain",
-        explanation: `Analysis failed: ${error instanceof Error ? error.message : "Unknown error"}. Please try again.`,
-      });
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorType = (error as any)?.errorType;
+      setTextError({ message: errorMessage, errorType });
+      setTextState("error");
       textAnalysisReadyRef.current = true;
     }
   }, []);
@@ -161,6 +160,8 @@ export function DemoSection() {
    */
   const handleTextFileSelect = useCallback(async (file: File) => {
     setTextState("analyzing");
+    setTextError(null);
+    setTextResult(null);
     textAnalysisReadyRef.current = false;
 
     try {
@@ -169,18 +170,14 @@ export function DemoSection() {
         fileName: file.name,
       });
       setTextResult(result);
+      setTextState("results");
       textAnalysisReadyRef.current = true;
     } catch (error) {
       console.error("Plagiarism check error:", error);
-      setTextResult({
-        normalizedTextLength: 0,
-        plagiarismPercentage: 0,
-        riskLevel: "low",
-        suspiciousSegments: [],
-        aiGeneratedLikelihood: 0,
-        aiVerdict: "uncertain",
-        explanation: `Analysis failed: ${error instanceof Error ? error.message : "Unknown error"}. Please try again.`,
-      });
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorType = (error as any)?.errorType;
+      setTextError({ message: errorMessage, errorType });
+      setTextState("error");
       textAnalysisReadyRef.current = true;
     }
   }, []);
@@ -222,7 +219,8 @@ export function DemoSection() {
 
     // Check if analysis is ready, if not wait a bit
     if (textAnalysisReadyRef.current) {
-      setTextState("results");
+      // Don't change state here - it's already set in handleTextSubmit/handleTextFileSelect
+      // State is either "results" or "error" depending on success/failure
     } else {
       // Wait for analysis to complete (poll every 200ms, max 15 seconds)
       let attempts = 0;
@@ -261,6 +259,7 @@ export function DemoSection() {
     }
     setTextState("idle");
     setTextResult(null);
+    setTextError(null);
     textAnalysisReadyRef.current = false;
   }, []);
 
@@ -359,7 +358,8 @@ export function DemoSection() {
                   <AnimatePresence mode="wait">
                     {textState === "idle" && <PlagiarismEmptyState key="empty" />}
                     {textState === "analyzing" && <AnalysisAnimation key="analyzing" onComplete={handleTextAnalysisComplete} />}
-                    {textState === "results" && textResult && <PlagiarismResults key="results" result={textResult} onReset={handleTextReset} />}
+                    {textState === "results" && textResult && <PlagiarismResults key="results" result={textResult} error={null} onReset={handleTextReset} />}
+                    {textState === "error" && <PlagiarismResults key="error" result={null} error={textError} onReset={handleTextReset} />}
                   </AnimatePresence>
                 </div>
               </div>

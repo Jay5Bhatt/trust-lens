@@ -49,8 +49,21 @@ export async function extractTextFromInput(
 async function extractFromPDF(buffer: Buffer): Promise<string> {
   try {
     const data = await pdfParse(buffer);
-    return data.text || "";
+    const extractedText = data.text || "";
+    
+    // Check if extracted text is empty or too short (likely a scanned PDF)
+    if (!extractedText || extractedText.trim().length < 50) {
+      throw new Error(
+        "No readable text found in this file. Please upload a text-based PDF (not a scanned image)."
+      );
+    }
+    
+    return extractedText;
   } catch (error) {
+    // Re-throw our custom error as-is
+    if (error instanceof Error && error.message.includes("No readable text")) {
+      throw error;
+    }
     throw new Error(
       `Failed to extract text from PDF: ${error instanceof Error ? error.message : String(error)}`
     );
@@ -63,8 +76,21 @@ async function extractFromPDF(buffer: Buffer): Promise<string> {
 async function extractFromDOCX(buffer: Buffer): Promise<string> {
   try {
     const result = await mammoth.extractRawText({ buffer });
-    return result.value || "";
+    const extractedText = result.value || "";
+    
+    // Check if extracted text is empty or too short
+    if (!extractedText || extractedText.trim().length < 50) {
+      throw new Error(
+        "No readable text found in this file. The document may be empty or corrupted."
+      );
+    }
+    
+    return extractedText;
   } catch (error) {
+    // Re-throw our custom error as-is
+    if (error instanceof Error && error.message.includes("No readable text")) {
+      throw error;
+    }
     throw new Error(
       `Failed to extract text from DOCX: ${error instanceof Error ? error.message : String(error)}`
     );
@@ -76,8 +102,21 @@ async function extractFromDOCX(buffer: Buffer): Promise<string> {
  */
 function extractFromTXT(buffer: Buffer): string {
   try {
-    return buffer.toString("utf-8");
+    const extractedText = buffer.toString("utf-8");
+    
+    // Check if extracted text is empty or too short
+    if (!extractedText || extractedText.trim().length < 50) {
+      throw new Error(
+        "No readable text found in this file. The file may be empty or contain only whitespace."
+      );
+    }
+    
+    return extractedText;
   } catch (error) {
+    // Re-throw our custom error as-is
+    if (error instanceof Error && error.message.includes("No readable text")) {
+      throw error;
+    }
     throw new Error(
       `Failed to extract text from TXT: ${error instanceof Error ? error.message : String(error)}`
     );

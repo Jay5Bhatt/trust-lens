@@ -5,11 +5,12 @@ import { useState } from "react";
 import type { PlagiarismReport } from "@/lib/types/plagiarism";
 
 type PlagiarismResultsProps = {
-  result: PlagiarismReport;
+  result: PlagiarismReport | null;
+  error?: { message: string; errorType?: string } | null;
   onReset: () => void;
 };
 
-export function PlagiarismResults({ result, onReset }: PlagiarismResultsProps) {
+export function PlagiarismResults({ result, error, onReset }: PlagiarismResultsProps) {
   const [expandedSegments, setExpandedSegments] = useState<Set<number>>(new Set());
 
   const toggleSegment = (index: number) => {
@@ -78,6 +79,134 @@ export function PlagiarismResults({ result, onReset }: PlagiarismResultsProps) {
       };
     }
   };
+
+  // Handle error state
+  if (error) {
+    const errorColor = {
+      text: "text-yellow-400",
+      bg: "bg-yellow-500/10",
+      border: "border-yellow-500/30",
+      stroke: "#F59E0B",
+      glow: "shadow-[0_0_30px_rgba(245,158,11,0.3)]",
+    };
+
+    const isExtractionError = error.errorType === "extraction_error";
+
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="space-y-6"
+      >
+        {/* Header with Reset */}
+        <div className="flex items-center justify-between">
+          <h3 className="text-2xl font-bold">Analysis Error</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onReset}
+            className="gap-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Try Again
+          </Button>
+        </div>
+
+        {/* Main Metrics Grid */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Plagiarism Score Card - Error State */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className={`glass-card rounded-3xl p-8 ${errorColor.bg} ${errorColor.border} border ${errorColor.glow}`}
+          >
+            <h4 className="font-semibold text-muted-foreground mb-6 text-center text-lg">
+              Plagiarism Detection
+            </h4>
+            <div className="flex flex-col items-center">
+              <div className="text-6xl font-bold mb-4" style={{ color: errorColor.stroke }}>
+                —
+              </div>
+              <div
+                className={`px-6 py-3 rounded-xl ${errorColor.bg} ${errorColor.border} border mb-4`}
+              >
+                <span className={`text-xl font-bold ${errorColor.text}`}>
+                  ANALYSIS ERROR
+                </span>
+              </div>
+              <div className="w-full">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-muted-foreground">Authenticity</span>
+                  <span className={errorColor.text}>N/A</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-muted" style={{ width: "0%" }} />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* AI Detection Card - Error State */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className={`glass-card rounded-3xl p-8 ${errorColor.bg} ${errorColor.border} border`}
+          >
+            <h4 className="font-semibold text-muted-foreground mb-6 text-center text-lg">
+              AI Detection
+            </h4>
+            <div className="flex flex-col items-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan/20 to-purple/20 flex items-center justify-center mb-4">
+                <FileText className={`w-10 h-10 ${errorColor.text}`} />
+              </div>
+              <div className={`text-3xl font-bold mb-2 ${errorColor.text}`}>
+                —%
+              </div>
+              <div className={`px-4 py-2 rounded-lg ${errorColor.bg} ${errorColor.border} border`}>
+                <span className={`font-semibold ${errorColor.text}`}>Unknown</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-4 text-center">
+                Likelihood of AI generation
+              </p>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Error Summary */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="glass-card rounded-3xl p-6 md:p-8"
+        >
+          <h4 className="font-bold text-lg mb-4">Analysis Summary</h4>
+          <p className="text-muted-foreground leading-relaxed mb-4">
+            {isExtractionError
+              ? "We couldn't read any text from this file. Please upload a text-based PDF or paste the text directly."
+              : error.message}
+          </p>
+          <div className="mt-4 pt-4 border-t border-border/50 grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">Text Length:</span>
+              <span className="ml-2 font-semibold">N/A</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Suspicious Segments:</span>
+              <span className="ml-2 font-semibold">N/A</span>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
+  // Normal result display (error is null)
+  if (!result) {
+    return null; // Should not happen, but handle gracefully
+  }
 
   const riskColor = getRiskColor(result.riskLevel);
   const aiColor = getAIColor(result.aiVerdict, result.aiGeneratedLikelihood);

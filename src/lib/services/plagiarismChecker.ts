@@ -58,11 +58,36 @@ export async function checkPlagiarism(
   // Step 3: Run web search and similarity scoring for each chunk
   const suspiciousSegments: SuspiciousSegment[] = [];
   let searchApiFailed = false;
+  let criticalSearchError: Error | null = null;
+  let criticalScoringError: Error | null = null;
 
   for (const chunk of chunks) {
     try {
       // Search web for this chunk
-      const searchResults = await searchWebForChunk(chunk.text);
+      let searchResults: any[] = [];
+      try {
+        searchResults = await searchWebForChunk(chunk.text);
+      } catch (error) {
+        // Check if this is a critical error (502, 5xx, network error)
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (
+          errorMessage.includes("502") ||
+          errorMessage.includes("500") ||
+          errorMessage.includes("503") ||
+          errorMessage.includes("504") ||
+          errorMessage.includes("5xx") ||
+          errorMessage.includes("network") ||
+          errorMessage.includes("fetch failed") ||
+          errorMessage.includes("timeout") ||
+          errorMessage.includes("SerpAPI") ||
+          errorMessage.includes("service error")
+        ) {
+          criticalSearchError = new Error("Plagiarism analysis failed due to web search service error");
+          throw criticalSearchError; // Re-throw to propagate
+        }
+        // For non-critical errors, log and continue
+        console.error(`Web search error for chunk at index ${chunk.startIndex}:`, error);
+      }
 
       if (searchResults.length === 0 && !searchApiFailed) {
         // Check if API key is missing (first time we notice)
@@ -72,10 +97,33 @@ export async function checkPlagiarism(
       }
 
       // Score chunk against sources
-      const scoringResult = await scoreChunkAgainstSources(
-        chunk,
-        searchResults
-      );
+      let scoringResult;
+      try {
+        scoringResult = await scoreChunkAgainstSources(
+          chunk,
+          searchResults
+        );
+      } catch (error) {
+        // Check if this is a critical error (502, 5xx, network error)
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (
+          errorMessage.includes("502") ||
+          errorMessage.includes("500") ||
+          errorMessage.includes("503") ||
+          errorMessage.includes("504") ||
+          errorMessage.includes("5xx") ||
+          errorMessage.includes("network") ||
+          errorMessage.includes("fetch failed") ||
+          errorMessage.includes("timeout") ||
+          errorMessage.includes("service error")
+        ) {
+          criticalScoringError = new Error("Plagiarism analysis failed due to AI similarity scoring service error");
+          throw criticalScoringError; // Re-throw to propagate
+        }
+        // For non-critical errors, log and continue
+        console.error(`Similarity scoring error for chunk at index ${chunk.startIndex}:`, error);
+        continue; // Skip this chunk
+      }
 
       // If chunk is suspicious, add to segments
       if (scoringResult.suspicious && scoringResult.matches.length > 0) {
@@ -88,9 +136,21 @@ export async function checkPlagiarism(
         });
       }
     } catch (error) {
+      // If this is a critical error, propagate it
+      if (error === criticalSearchError || error === criticalScoringError) {
+        throw error;
+      }
+      // Otherwise, log and continue with other chunks
       console.error(`Error processing chunk at index ${chunk.startIndex}:`, error);
-      // Continue with other chunks
     }
+  }
+
+  // If we had critical errors, throw them now
+  if (criticalSearchError) {
+    throw criticalSearchError;
+  }
+  if (criticalScoringError) {
+    throw criticalScoringError;
   }
 
   // Step 4: Compute plagiarism percentage
@@ -123,9 +183,29 @@ export async function checkPlagiarism(
   try {
     aiDetection = await detectAIGeneratedText(fullText);
   } catch (error) {
+    // Check if this is a critical error (502, 5xx, network error)
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (
+      errorMessage.includes("502") ||
+      errorMessage.includes("500") ||
+      errorMessage.includes("503") ||
+      errorMessage.includes("504") ||
+      errorMessage.includes("5xx") ||
+      errorMessage.includes("network") ||
+      errorMessage.includes("fetch failed") ||
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("service error")
+    ) {
+      // If we also had search/scoring errors, combine them
+      if (criticalSearchError || criticalScoringError) {
+        throw new Error("Plagiarism analysis failed due to upstream service errors");
+      }
+      throw new Error("Plagiarism analysis failed due to AI detection service error");
+    }
+    // For non-critical errors, log and use fallback
     console.error("AI detection failed:", error);
     aiDetection = {
-      likelihood: 0,
+      likelihood: 0.5,
       verdict: "uncertain" as const,
     };
   }

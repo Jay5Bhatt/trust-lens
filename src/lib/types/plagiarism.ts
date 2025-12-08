@@ -50,3 +50,12 @@ export type WebSearchResult = {
   snippet?: string;
 };
 
+export type PlagiarismAPIResponse =
+  | { success: true; data: PlagiarismReport }
+  | {
+      success: false;
+      errorType: "extraction_error" | "analysis_error" | "bad_request";
+      message: string;
+      details?: string;
+    };
+

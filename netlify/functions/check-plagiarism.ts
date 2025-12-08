@@ -32,7 +32,9 @@ export const handler: Handler = async (event, context) => {
         statusCode: 400,
         headers,
         body: JSON.stringify({
-          error: "Either 'text' or 'fileBuffer' must be provided",
+          success: false,
+          errorType: "bad_request",
+          message: "Either 'text' or 'fileBuffer' must be provided",
         }),
       };
     }
@@ -51,7 +53,9 @@ export const handler: Handler = async (event, context) => {
           statusCode: 400,
           headers,
           body: JSON.stringify({
-            error: `Invalid fileBuffer format: ${error instanceof Error ? error.message : String(error)}`,
+            success: false,
+            errorType: "bad_request",
+            message: `Invalid fileBuffer format: ${error instanceof Error ? error.message : String(error)}`,
           }),
         };
       }
@@ -67,16 +71,43 @@ export const handler: Handler = async (event, context) => {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(result),
+      body: JSON.stringify({
+        success: true,
+        data: result,
+      }),
     };
   } catch (error) {
     console.error("Error checking plagiarism:", error);
+    
+    // Determine error type and status code
+    const errorMessage = error instanceof Error ? error.message : "Internal server error";
+    let errorType: "extraction_error" | "analysis_error" | "bad_request" = "analysis_error";
+    let statusCode = 500;
+
+    // Check for extraction errors
+    if (errorMessage.includes("No readable text") || errorMessage.includes("text-based PDF") || errorMessage.includes("too short")) {
+      errorType = "extraction_error";
+      statusCode = 400;
+    }
+    // Check for upstream service errors (502, network errors, etc.)
+    else if (errorMessage.includes("service error") || errorMessage.includes("502") || errorMessage.includes("upstream")) {
+      errorType = "analysis_error";
+      statusCode = 502;
+    }
+    // Check for bad request errors
+    else if (errorMessage.includes("Unsupported file type") || errorMessage.includes("must be provided")) {
+      errorType = "bad_request";
+      statusCode = 400;
+    }
+
     return {
-      statusCode: 500,
+      statusCode,
       headers,
       body: JSON.stringify({
-        error:
-          error instanceof Error ? error.message : "Internal server error",
+        success: false,
+        errorType,
+        message: errorMessage,
+        details: error instanceof Error ? error.stack : undefined,
       }),
     };
   }

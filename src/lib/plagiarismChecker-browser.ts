@@ -1,4 +1,4 @@
-import type { PlagiarismReport } from "./types/plagiarism";
+import type { PlagiarismReport, PlagiarismAPIResponse } from "./types/plagiarism";
 
 /**
  * Browser-side input type (File instead of Buffer)
@@ -45,19 +45,43 @@ export async function checkPlagiarismAPI(
     throw new Error("Either 'text' or 'fileBuffer' must be provided");
   }
 
-  const response = await fetch("/.netlify/functions/check-plagiarism", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      error: `HTTP error! status: ${response.status}`,
-    }));
-    throw new Error(error.error || `HTTP error! status: ${response.status}`);
+  let response: Response;
+  try {
+    response = await fetch("/.netlify/functions/check-plagiarism", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    // Handle network errors (fetch failed, CORS, etc.)
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Network error: ${errorMessage}. Please check your connection and try again.`);
   }
 
-  return response.json();
+  // Parse response JSON
+  let responseData: PlagiarismAPIResponse;
+  try {
+    responseData = await response.json();
+  } catch (error) {
+    // If JSON parsing fails, throw with HTTP status
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  // Check for success flag
+  if (!response.ok || !responseData.success) {
+    // Handle error response
+    if (!responseData.success) {
+      const errorMessage = responseData.message || `HTTP error! status: ${response.status}`;
+      const error = new Error(errorMessage);
+      // Attach errorType to error object for frontend use
+      (error as any).errorType = responseData.errorType;
+      throw error;
+    }
+    // Fallback for non-OK responses without structured error
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  // Return the PlagiarismReport from successful response
+  return responseData.data;
 }
 

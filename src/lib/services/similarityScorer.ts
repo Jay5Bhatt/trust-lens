@@ -85,6 +85,7 @@ export async function scoreChunkAgainstSources(
   const matches: SourceMatch[] = [];
 
   // Score chunk against each source
+  let criticalError: Error | null = null;
   for (const source of sources) {
     try {
       const similarity = await scoreChunkAgainstSource(ai, chunk.text, source);
@@ -99,9 +100,30 @@ export async function scoreChunkAgainstSources(
         });
       }
     } catch (error) {
+      // Check if this is a critical error - if so, save it and break
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (
+        errorMessage.includes("502") ||
+        errorMessage.includes("500") ||
+        errorMessage.includes("503") ||
+        errorMessage.includes("504") ||
+        errorMessage.includes("5xx") ||
+        errorMessage.includes("network") ||
+        errorMessage.includes("fetch failed") ||
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("service error")
+      ) {
+        criticalError = error instanceof Error ? error : new Error(String(error));
+        break; // Stop processing and propagate critical error
+      }
+      // For non-critical errors, log and continue with other sources
       console.error(`Error scoring against source ${source.url}:`, error);
-      // Continue with other sources
     }
+  }
+
+  // If we had a critical error, throw it now
+  if (criticalError) {
+    throw criticalError;
   }
 
   // Sort matches by similarity score (highest first)
@@ -164,6 +186,22 @@ ${sourceText.slice(0, 500)}`;
     console.warn("Failed to parse similarity score from Gemini response");
     return 0;
   } catch (error) {
+    // Check if this is a critical API error (502, 5xx, network error) - if so, rethrow
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (
+      errorMessage.includes("502") ||
+      errorMessage.includes("500") ||
+      errorMessage.includes("503") ||
+      errorMessage.includes("504") ||
+      errorMessage.includes("5xx") ||
+      errorMessage.includes("network") ||
+      errorMessage.includes("fetch failed") ||
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("service error")
+    ) {
+      throw error; // Re-throw critical errors so they propagate
+    }
+    // For non-critical errors (parsing, etc.), log and return 0
     console.error("Error in similarity scoring:", error);
     return 0;
   }

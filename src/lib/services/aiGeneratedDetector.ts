@@ -32,7 +32,9 @@ function getGeminiClient(): GoogleGenAI | null {
 /**
  * AI detection prompt for Gemini
  */
-const AI_DETECTION_PROMPT = `You are an expert in detecting whether a long academic text was written by a human or by a modern LLM.
+const AI_DETECTION_PROMPT = `You are an expert in detecting whether a long academic text was written by a human or by a modern large language model (LLM).
+
+Consider repetition, structure, style, and subtle artifacts.
 
 Analyze the text for:
 - Repetitive patterns or structures
@@ -49,10 +51,13 @@ Return ONLY a JSON object with this exact structure:
 }
 
 where:
-- likelihood: 0.0 = very likely human-written, 1.0 = very likely AI-generated
-- verdict: "likely_ai" if likelihood > 0.6, "likely_human" if likelihood < 0.4, "uncertain" otherwise
+- likelihood: the probability the text was written by an AI/LLM (0.0 = very likely human, 1.0 = very likely AI)
+- verdict: 
+  * "likely_ai" if likelihood >= 0.7 (reasonably confident it's AI-generated)
+  * "likely_human" if likelihood <= 0.3 (reasonably confident it's human-written)
+  * "uncertain" otherwise
 
-Be cautious and avoid extremes like 0 or 1. Consider that well-written human text can sometimes appear AI-like, and AI text can sometimes appear human-like.`;
+Never return exactly 0 or 1 for likelihood. Use values between 0.01 and 0.99.`;
 
 /**
  * Detect if text is AI-generated using Gemini
@@ -101,12 +106,27 @@ ${textToAnalyze}`;
         typeof parsed.likelihood === "number" &&
         typeof parsed.verdict === "string"
       ) {
-        const likelihood = Math.max(0, Math.min(1, parsed.likelihood));
+        // Clamp likelihood to avoid extremes, but allow 0.01-0.99 range
+        const rawLikelihood = parsed.likelihood;
+        const likelihood = Math.max(0.01, Math.min(0.99, rawLikelihood));
         const verdict = parsed.verdict as AIVerdict;
         
-        // Validate verdict
+        // Validate and enforce verdict based on likelihood thresholds
         const validVerdicts: AIVerdict[] = ["likely_ai", "likely_human", "uncertain"];
-        const finalVerdict = validVerdicts.includes(verdict) ? verdict : "uncertain";
+        let finalVerdict: AIVerdict;
+        
+        if (validVerdicts.includes(verdict)) {
+          finalVerdict = verdict;
+        } else {
+          // Auto-determine verdict based on likelihood if verdict is invalid
+          if (likelihood >= 0.7) {
+            finalVerdict = "likely_ai";
+          } else if (likelihood <= 0.3) {
+            finalVerdict = "likely_human";
+          } else {
+            finalVerdict = "uncertain";
+          }
+        }
 
         return {
           likelihood,
@@ -118,13 +138,29 @@ ${textToAnalyze}`;
     // Fallback: if we can't parse, return uncertain
     console.warn("Failed to parse AI detection result from Gemini response");
     return {
-      likelihood: 0,
+      likelihood: 0.5,
       verdict: "uncertain",
     };
   } catch (error) {
+    // Check if this is a critical API error (502, 5xx, network error)
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (
+      errorMessage.includes("502") ||
+      errorMessage.includes("500") ||
+      errorMessage.includes("503") ||
+      errorMessage.includes("504") ||
+      errorMessage.includes("5xx") ||
+      errorMessage.includes("network") ||
+      errorMessage.includes("fetch failed") ||
+      errorMessage.includes("timeout")
+    ) {
+      // Re-throw critical errors so they propagate to the caller
+      throw new Error(`AI detection service error: ${errorMessage}`);
+    }
+    // For non-critical errors (parsing, etc.), log and return uncertain
     console.error("Error in AI detection:", error);
     return {
-      likelihood: 0,
+      likelihood: 0.5,
       verdict: "uncertain",
     };
   }
