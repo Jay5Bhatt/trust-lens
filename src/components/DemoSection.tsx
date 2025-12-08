@@ -297,17 +297,17 @@ export function DemoSection() {
 
         <motion.div initial={{ opacity: 0, y: 40 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, delay: 0.2 }} className="glass-card rounded-[2rem] p-6 md:p-10 shadow-card border-cyan/20">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="w-full">
-            <TabsList className="mb-8 w-full max-w-lg mx-auto grid grid-cols-2 h-12 bg-muted/50 backdrop-blur-xl border border-border/50 rounded-xl p-1">
+            <TabsList className="!flex mb-8 w-full max-w-lg mx-auto h-12 bg-muted/80 backdrop-blur-xl border-2 border-cyan/40 rounded-xl p-1.5 shadow-lg">
               <TabsTrigger 
                 value="image" 
-                className="gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan/30 data-[state=active]:to-purple/30 data-[state=active]:text-foreground data-[state=active]:shadow-lg data-[state=active]:border data-[state=active]:border-cyan/50 data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
+                className="flex-1 gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan/40 data-[state=active]:to-purple/40 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
               >
                 <Image className="w-4 h-4" />
                 Image Analysis
               </TabsTrigger>
               <TabsTrigger 
                 value="text" 
-                className="gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan/30 data-[state=active]:to-purple/30 data-[state=active]:text-foreground data-[state=active]:shadow-lg data-[state=active]:border data-[state=active]:border-cyan/50 data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
+                className="flex-1 gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan/40 data-[state=active]:to-purple/40 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
               >
                 <FileText className="w-4 h-4" />
                 Text/Plagiarism Check
