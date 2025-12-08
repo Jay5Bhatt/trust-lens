@@ -30,3 +30,4 @@ export interface CombinedAnalysisResult {
   forensic: GeminiForensicAnalysis;
 }
 
+
