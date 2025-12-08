@@ -10,6 +10,7 @@ import { ResultsDashboard } from "./demo/ResultsDashboard";
 import { PlagiarismResults } from "./demo/PlagiarismResults";
 import { EmptyState } from "./demo/EmptyState";
 import { PlagiarismEmptyState } from "./demo/PlagiarismEmptyState";
+import { DemoTabs } from "./DemoTabs";
 import { exampleResults, type AnalysisResult, type Anomaly, type Severity } from "./demo/types";
 import { analyzeImageCombined } from "@/lib/combined-analysis";
 import { checkPlagiarismAPI } from "@/lib/plagiarismChecker-browser";
@@ -292,7 +293,7 @@ export function DemoSection() {
             <span className="text-sm font-medium text-muted-foreground">Live Demo</span>
           </div>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">See It <span className="text-gradient-vibrant">In Action</span></h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">Analyze images or check text for plagiarism and AI-generated content</p>
+          <DemoTabs />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 40 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, delay: 0.2 }} className="glass-card rounded-[2rem] p-6 md:p-10 shadow-card border-cyan/20">
