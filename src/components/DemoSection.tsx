@@ -297,22 +297,30 @@ export function DemoSection() {
 
         <motion.div initial={{ opacity: 0, y: 40 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, delay: 0.2 }} className="glass-card rounded-[2rem] p-6 md:p-10 shadow-card border-cyan/20">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="w-full">
-            <TabsList className="!flex mb-8 w-full max-w-lg mx-auto h-12 bg-muted/80 backdrop-blur-xl border-2 border-cyan/40 rounded-xl p-1.5 shadow-lg">
-              <TabsTrigger 
-                value="image" 
-                className="flex-1 gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan/40 data-[state=active]:to-purple/40 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
+            <div className="mb-8 flex w-full max-w-lg mx-auto h-12 bg-muted/90 backdrop-blur-xl border-2 border-cyan/50 rounded-xl p-1.5 shadow-lg relative z-10">
+              <button
+                onClick={() => setActiveTab("image")}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                  activeTab === "image"
+                    ? "bg-gradient-to-r from-cyan/50 to-purple/50 text-white shadow-lg border border-cyan/60"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }`}
               >
                 <Image className="w-4 h-4" />
                 Image Analysis
-              </TabsTrigger>
-              <TabsTrigger 
-                value="text" 
-                className="flex-1 gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan/40 data-[state=active]:to-purple/40 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
+              </button>
+              <button
+                onClick={() => setActiveTab("text")}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                  activeTab === "text"
+                    ? "bg-gradient-to-r from-cyan/50 to-purple/50 text-white shadow-lg border border-cyan/60"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }`}
               >
                 <FileText className="w-4 h-4" />
                 Text/Plagiarism Check
-              </TabsTrigger>
-            </TabsList>
+              </button>
+            </div>
 
             <TabsContent value="image" className="mt-0">
               <div className="grid lg:grid-cols-5 gap-8 lg:gap-10">
