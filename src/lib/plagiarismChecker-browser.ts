@@ -27,7 +27,7 @@ function fileToBase64(file: File): Promise<string> {
 
 /**
  * Browser-side API wrapper for plagiarism checking
- * Calls the Netlify Function endpoint
+ * Calls the Vercel API route endpoint
  */
 export async function checkPlagiarismAPI(
   input: PlagiarismInputBrowser | { text: string } | { fileBuffer: File; fileName?: string }
@@ -47,7 +47,7 @@ export async function checkPlagiarismAPI(
 
   let response: Response;
   try {
-    response = await fetch("/.netlify/functions/check-plagiarism", {
+    response = await fetch("/api/check-plagiarism", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

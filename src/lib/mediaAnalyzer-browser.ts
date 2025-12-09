@@ -18,7 +18,7 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * Browser-friendly wrapper for analyzeImageMedia that calls the Netlify Function
+ * Browser-friendly wrapper for analyzeImageMedia that calls the Vercel API route
  * Use this in React components instead of the direct analyzeImageMedia function
  * 
  * @param input - File, Buffer, or Base64 string
@@ -41,7 +41,7 @@ export async function analyzeImageMediaAPI(
       base64Data = base64Match ? base64Match[1] : input;
     }
 
-    const response = await fetch("/.netlify/functions/analyze-image", {
+    const response = await fetch("/api/analyze-image", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

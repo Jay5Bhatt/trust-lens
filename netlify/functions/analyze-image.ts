@@ -1,6 +1,9 @@
 import type { Handler } from "@netlify/functions";
 import { analyzeImageMedia } from "../../src/lib/mediaAnalyzer";
 
+// DISABLED: This Netlify Function has been migrated to Vercel API route at api/analyze-image.ts
+// Kept for reference only - not used at runtime
+/*
 export const handler: Handler = async (event, context) => {
   // Handle CORS
   const headers = {
@@ -52,4 +55,5 @@ export const handler: Handler = async (event, context) => {
     };
   }
 };
+*/
 

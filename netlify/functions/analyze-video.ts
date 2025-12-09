@@ -1,6 +1,9 @@
 import type { Handler } from "@netlify/functions";
 import { analyzeVideo } from "../../src/lib/gemini-analysis";
 
+// DISABLED: This Netlify Function has been migrated to Vercel API route at api/analyze-video.ts
+// Kept for reference only - not used at runtime
+/*
 export const handler: Handler = async (event, context) => {
   const headers = {
     "Access-Control-Allow-Origin": "*",
@@ -50,4 +53,5 @@ export const handler: Handler = async (event, context) => {
     };
   }
 };
+*/
 

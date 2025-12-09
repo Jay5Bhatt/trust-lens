@@ -52,9 +52,28 @@ async function extractFromPDF(buffer: Buffer): Promise<string> {
     // This works correctly with externalized modules while avoiding bundling
     const { createRequire } = await import("module");
     const require = createRequire(import.meta.url);
-    const pdfParse = require("pdf-parse");
+    const pdfParseModule = require("pdf-parse");
     
-    const data = await pdfParse(buffer);
+    // Ensure buffer is a proper Buffer instance
+    const pdfBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+    
+    // Try accessing default export explicitly, fallback to module itself
+    const pdfParse = pdfParseModule.default || pdfParseModule;
+    
+    // Call pdf-parse with Buffer - try direct call first, then with options if needed
+    let data;
+    try {
+      // Try direct Buffer call (standard usage)
+      data = await pdfParse(pdfBuffer);
+    } catch (directError) {
+      // If direct call fails with filename error, try with options object
+      if (directError instanceof Error && directError.message.includes("filename")) {
+        data = await pdfParse(pdfBuffer, {});
+      } else {
+        throw directError;
+      }
+    }
+    
     const extractedText = data.text || "";
     
     // Check if extracted text is empty or too short (likely a scanned PDF)
