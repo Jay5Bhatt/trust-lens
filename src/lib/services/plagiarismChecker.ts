@@ -8,19 +8,23 @@ import type {
   TextChunk,
   SuspiciousSegment,
   RiskLevel,
+  AnalysisStatus,
 } from "../types/plagiarism";
+
+const CHUNK_SIZE = 1500; // Characters per chunk
+const CHUNK_OVERLAP = 200; // Overlap between chunks
+const MAX_CONCURRENT_CHUNKS = 3; // Process max 3 chunks in parallel
+const RATE_LIMIT_DELAY_MS = 200; // Delay between chunk processing
 
 /**
  * Chunk text into overlapping segments for analysis
  */
 function chunkText(text: string): TextChunk[] {
   const chunks: TextChunk[] = [];
-  const chunkSize = 1400; // Average of 1200-1600
-  const overlap = 200;
   let startIndex = 0;
 
   while (startIndex < text.length) {
-    const endIndex = Math.min(startIndex + chunkSize, text.length);
+    const endIndex = Math.min(startIndex + CHUNK_SIZE, text.length);
     const chunkText = text.slice(startIndex, endIndex);
 
     chunks.push({
@@ -30,7 +34,7 @@ function chunkText(text: string): TextChunk[] {
     });
 
     // Move start index forward, accounting for overlap
-    startIndex = endIndex - overlap;
+    startIndex = endIndex - CHUNK_OVERLAP;
 
     // Prevent infinite loop if text is shorter than chunk size
     if (startIndex >= text.length) {
@@ -39,6 +43,112 @@ function chunkText(text: string): TextChunk[] {
   }
 
   return chunks;
+}
+
+/**
+ * Process a single chunk with web search and similarity scoring
+ */
+async function processChunk(
+  chunk: TextChunk
+): Promise<{
+  segment: SuspiciousSegment | null;
+  error?: string;
+  unscored?: boolean;
+}> {
+  try {
+    // Search web for this chunk
+    const searchResults = await searchWebForChunk(chunk.text);
+
+    // Score chunk against sources
+    const scoringResult = await scoreChunkAgainstSources(chunk, searchResults);
+
+    // If chunk is suspicious, create segment
+    if (scoringResult.suspicious && scoringResult.matches.length > 0) {
+      return {
+        segment: {
+          startIndex: chunk.startIndex,
+          endIndex: chunk.endIndex,
+          textPreview: chunk.text.slice(0, 50) + "...", // 50 chars preview
+          similarityScore: scoringResult.similarityScore,
+          sources: scoringResult.matches,
+        },
+      };
+    }
+
+    return { segment: null };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Check if this is a critical error
+    const isCritical =
+      errorMessage.includes("502") ||
+      errorMessage.includes("500") ||
+      errorMessage.includes("503") ||
+      errorMessage.includes("504") ||
+      errorMessage.includes("5xx") ||
+      errorMessage.includes("network") ||
+      errorMessage.includes("fetch failed") ||
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("service error");
+
+    if (isCritical) {
+      // Re-throw critical errors
+      throw error;
+    }
+
+    // For non-critical errors, mark as unscored
+    console.error(`Error processing chunk at index ${chunk.startIndex}:`, error);
+    return { segment: null, error: errorMessage, unscored: true };
+  }
+}
+
+/**
+ * Process chunks with concurrency control
+ */
+async function processChunksConcurrently(
+  chunks: TextChunk[]
+): Promise<{
+  segments: SuspiciousSegment[];
+  unscoredCount: number;
+  errors: string[];
+}> {
+  const segments: SuspiciousSegment[] = [];
+  const errors: string[] = [];
+  let unscoredCount = 0;
+
+  // Process chunks in batches of MAX_CONCURRENT_CHUNKS
+  for (let i = 0; i < chunks.length; i += MAX_CONCURRENT_CHUNKS) {
+    const batch = chunks.slice(i, i + MAX_CONCURRENT_CHUNKS);
+    
+    const results = await Promise.allSettled(
+      batch.map((chunk) => processChunk(chunk))
+    );
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        const { segment, error, unscored } = result.value;
+        if (segment) {
+          segments.push(segment);
+        }
+        if (unscored) {
+          unscoredCount++;
+        }
+        if (error) {
+          errors.push(error);
+        }
+      } else {
+        // Rejected promise - this is a critical error
+        throw result.reason;
+      }
+    }
+
+    // Add delay between batches to avoid rate limits
+    if (i + MAX_CONCURRENT_CHUNKS < chunks.length) {
+      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
+    }
+  }
+
+  return { segments, unscoredCount, errors };
 }
 
 /**
@@ -55,117 +165,54 @@ export async function checkPlagiarism(
   // Step 2: Chunk text
   const chunks = chunkText(fullText);
 
-  // Step 3: Run web search and similarity scoring for each chunk
-  const suspiciousSegments: SuspiciousSegment[] = [];
+  // Step 3: Process chunks with concurrency control
+  let suspiciousSegments: SuspiciousSegment[] = [];
+  let unscoredChunks = 0;
   let searchApiFailed = false;
-  let criticalSearchError: Error | null = null;
-  let criticalScoringError: Error | null = null;
+  let analysisStatus: AnalysisStatus = "success";
 
-  for (const chunk of chunks) {
-    try {
-      // Search web for this chunk
-      let searchResults: any[] = [];
-      try {
-        searchResults = await searchWebForChunk(chunk.text);
-      } catch (error) {
-        // Check if this is a critical error (502, 5xx, network error)
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        if (
-          errorMessage.includes("502") ||
-          errorMessage.includes("500") ||
-          errorMessage.includes("503") ||
-          errorMessage.includes("504") ||
-          errorMessage.includes("5xx") ||
-          errorMessage.includes("network") ||
-          errorMessage.includes("fetch failed") ||
-          errorMessage.includes("timeout") ||
-          errorMessage.includes("SerpAPI") ||
-          errorMessage.includes("service error")
-        ) {
-          criticalSearchError = new Error("Plagiarism analysis failed due to web search service error");
-          throw criticalSearchError; // Re-throw to propagate
-        }
-        // For non-critical errors, log and continue
-        console.error(`Web search error for chunk at index ${chunk.startIndex}:`, error);
-      }
+  try {
+    const { segments, unscoredCount, errors } = await processChunksConcurrently(chunks);
+    suspiciousSegments = segments;
+    unscoredChunks = unscoredCount;
 
-      if (searchResults.length === 0 && !searchApiFailed) {
-        // Check if API key is missing (first time we notice)
-        if (!process.env.SEARCH_API_KEY) {
-          searchApiFailed = true;
-        }
-      }
-
-      // Score chunk against sources
-      let scoringResult;
-      try {
-        scoringResult = await scoreChunkAgainstSources(
-          chunk,
-          searchResults
-        );
-      } catch (error) {
-        // Check if this is a critical error (502, 5xx, network error)
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        if (
-          errorMessage.includes("502") ||
-          errorMessage.includes("500") ||
-          errorMessage.includes("503") ||
-          errorMessage.includes("504") ||
-          errorMessage.includes("5xx") ||
-          errorMessage.includes("network") ||
-          errorMessage.includes("fetch failed") ||
-          errorMessage.includes("timeout") ||
-          errorMessage.includes("service error")
-        ) {
-          criticalScoringError = new Error("Plagiarism analysis failed due to AI similarity scoring service error");
-          throw criticalScoringError; // Re-throw to propagate
-        }
-        // For non-critical errors, log and continue
-        console.error(`Similarity scoring error for chunk at index ${chunk.startIndex}:`, error);
-        continue; // Skip this chunk
-      }
-
-      // If chunk is suspicious, add to segments
-      if (scoringResult.suspicious && scoringResult.matches.length > 0) {
-        suspiciousSegments.push({
-          startIndex: chunk.startIndex,
-          endIndex: chunk.endIndex,
-          textPreview: chunk.text.slice(0, 200) + "...",
-          similarityScore: scoringResult.similarityScore,
-          sources: scoringResult.matches,
-        });
-      }
-    } catch (error) {
-      // If this is a critical error, propagate it
-      if (error === criticalSearchError || error === criticalScoringError) {
-        throw error;
-      }
-      // Otherwise, log and continue with other chunks
-      console.error(`Error processing chunk at index ${chunk.startIndex}:`, error);
+    if (unscoredCount > 0) {
+      analysisStatus = "partial_success";
     }
+
+    if (errors.length > 0) {
+      console.warn(`Some chunks failed to process: ${errors.length} errors`);
+    }
+  } catch (error) {
+    // Critical error occurred
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Plagiarism analysis failed: ${errorMessage}`);
   }
 
-  // If we had critical errors, throw them now
-  if (criticalSearchError) {
-    throw criticalSearchError;
-  }
-  if (criticalScoringError) {
-    throw criticalScoringError;
+  // Check if search API is available
+  if (!process.env.SEARCH_API_KEY) {
+    searchApiFailed = true;
   }
 
-  // Step 4: Compute plagiarism percentage
+  // Step 4: Compute plagiarism percentage using weighted average
   let plagiarismPercentage = 0;
   if (suspiciousSegments.length > 0) {
-    // Calculate total suspicious character count
-    let totalSuspiciousChars = 0;
+    // Calculate weighted average (weight = chunk length)
+    let totalWeightedSimilarity = 0;
+    let totalWeight = 0;
+
     for (const segment of suspiciousSegments) {
-      totalSuspiciousChars += segment.endIndex - segment.startIndex;
+      const chunkLength = segment.endIndex - segment.startIndex;
+      totalWeightedSimilarity += segment.similarityScore * chunkLength;
+      totalWeight += chunkLength;
     }
-    // Calculate percentage (accounting for overlaps)
-    plagiarismPercentage = Math.min(
-      100,
-      (totalSuspiciousChars / normalizedTextLength) * 100
-    );
+
+    // Convert to percentage
+    if (totalWeight > 0) {
+      const avgSimilarity = totalWeightedSimilarity / totalWeight;
+      // Scale similarity to percentage (similarity 0.5+ = suspicious)
+      plagiarismPercentage = Math.min(100, avgSimilarity * 100);
+    }
   }
 
   // Step 5: Determine risk level
@@ -183,7 +230,7 @@ export async function checkPlagiarism(
   try {
     aiDetection = await detectAIGeneratedText(fullText);
   } catch (error) {
-    // Check if this is a critical error (502, 5xx, network error)
+    // Check if this is a critical error
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (
       errorMessage.includes("502") ||
@@ -196,11 +243,7 @@ export async function checkPlagiarism(
       errorMessage.includes("timeout") ||
       errorMessage.includes("service error")
     ) {
-      // If we also had search/scoring errors, combine them
-      if (criticalSearchError || criticalScoringError) {
-        throw new Error("Plagiarism analysis failed due to upstream service errors");
-      }
-      throw new Error("Plagiarism analysis failed due to AI detection service error");
+      throw new Error(`AI detection service error: ${errorMessage}`);
     }
     // For non-critical errors, log and use fallback
     console.error("AI detection failed:", error);
@@ -208,6 +251,9 @@ export async function checkPlagiarism(
       likelihood: 0.5,
       verdict: "uncertain" as const,
     };
+    if (analysisStatus === "success") {
+      analysisStatus = "partial_success";
+    }
   }
 
   // Adjust risk level based on AI detection if needed
@@ -226,7 +272,9 @@ export async function checkPlagiarism(
     riskLevel,
     suspiciousSegments.length,
     aiDetection,
-    searchApiFailed
+    searchApiFailed,
+    unscoredChunks,
+    normalizedTextLength
   );
 
   return {
@@ -237,6 +285,7 @@ export async function checkPlagiarism(
     aiGeneratedLikelihood: aiDetection.likelihood,
     aiVerdict: aiDetection.verdict,
     explanation,
+    analysisStatus,
   };
 }
 
@@ -248,13 +297,27 @@ function generateExplanation(
   riskLevel: RiskLevel,
   suspiciousSegmentCount: number,
   aiDetection: { likelihood: number; verdict: string },
-  searchApiFailed: boolean
+  searchApiFailed: boolean,
+  unscoredChunks: number,
+  textLength: number
 ): string {
   const parts: string[] = [];
 
   if (searchApiFailed) {
     parts.push(
       "Web search API is not configured. Plagiarism detection against public sources was skipped."
+    );
+  }
+
+  if (unscoredChunks > 0) {
+    parts.push(
+      `Note: ${unscoredChunks} chunk${unscoredChunks !== 1 ? "s" : ""} could not be analyzed due to service errors. Results may be incomplete.`
+    );
+  }
+
+  if (textLength > 200_000) {
+    parts.push(
+      "Note: Text was truncated to 200,000 characters for analysis. Results are based on the first portion of the document."
     );
   }
 
@@ -284,4 +347,3 @@ function generateExplanation(
 
   return parts.join(" ");
 }
-

@@ -152,6 +152,84 @@ While the world is building tools to **forge reality**, TrustLens builds the shi
 
 ---
 
+---
+
+## 🔍 Plagiarism & AI Detection API
+
+### API Endpoints
+
+#### Health Check
+```bash
+curl https://your-deploy.vercel.app/api/health
+```
+
+#### Check Plagiarism
+```bash
+curl -X POST https://your-deploy.vercel.app/api/check-plagiarism \
+  -H "Content-Type: application/json" \
+  -d '{"text":"This is a short test text to check plagiarism detection."}'
+```
+
+### Environment Variables
+
+Required for production:
+- `GEMINI_API_KEY` - Google Gemini API key for AI analysis
+- `SEARCH_API_KEY` - SerpAPI key for web search (optional, but recommended)
+
+Optional:
+- `REDIS_URL` - Redis connection string for caching (optional)
+- `DAILY_REQUEST_LIMIT` - Daily request limit per user (optional)
+
+### API Response Format
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "normalizedTextLength": 1234,
+    "plagiarismPercentage": 15.5,
+    "riskLevel": "low",
+    "suspiciousSegments": [],
+    "aiGeneratedLikelihood": 0.3,
+    "aiVerdict": "likely_human",
+    "explanation": "...",
+    "analysisStatus": "success"
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "errorType": "extraction_error" | "analysis_error" | "upstream_error" | "bad_request",
+  "message": "User-friendly error message",
+  "details": "Optional internal details (sanitized)"
+}
+```
+
+### Supported File Types
+
+- **PDF** - Extracted using Gemini AI
+- **DOCX** - Extracted using Gemini AI  
+- **TXT** - Direct text extraction
+- **Raw Text** - Paste directly
+
+### Features
+
+- ✅ Text extraction from PDF/DOCX using Gemini
+- ✅ Web search for plagiarism detection (SerpAPI)
+- ✅ AI-generated text detection (Gemini)
+- ✅ Caching for performance (LRU + optional Redis)
+- ✅ Retry logic with exponential backoff
+- ✅ Concurrency control (max 3 parallel chunks)
+- ✅ Rate limiting and delays
+- ✅ 45s timeout enforcement
+- ✅ Comprehensive error handling
+
+---
+
 <div align="center">
 
 ### ⭐ If you believe digital truth deserves protection, give this repo a star.

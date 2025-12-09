@@ -1,5 +1,24 @@
-import mammoth from "mammoth";
 import type { PlagiarismInput } from "../types/plagiarism";
+import { extractTextWithGemini } from "./geminiTextExtractor";
+
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_TEXT_LENGTH = 200_000; // 200k characters
+const MIN_TEXT_LENGTH = 50; // Minimum required characters
+
+/**
+ * Get MIME type from file extension
+ */
+function getMimeType(fileName: string): string {
+  const extension = fileName.split(".").pop()?.toLowerCase() || "";
+  switch (extension) {
+    case "pdf":
+      return "application/pdf";
+    case "docx":
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    default:
+      return "application/octet-stream";
+  }
+}
 
 /**
  * Extract and normalize text from various input formats
@@ -10,6 +29,9 @@ export async function extractTextFromInput(
 ): Promise<string> {
   // If raw text is provided, use it directly
   if (input.text) {
+    if (!input.text.trim()) {
+      throw new Error("Text input is empty");
+    }
     return normalizeText(input.text);
   }
 
@@ -18,22 +40,56 @@ export async function extractTextFromInput(
     const fileName = input.fileName || "";
     const extension = fileName.split(".").pop()?.toLowerCase() || "";
 
+    // Check file size limit
+    if (input.fileBuffer.length > MAX_FILE_SIZE_BYTES) {
+      throw new Error(
+        `File too large. Limit 10MB. Your file is ${(input.fileBuffer.length / 1024 / 1024).toFixed(2)}MB.`
+      );
+    }
+
     let extractedText: string;
 
     switch (extension) {
       case "pdf":
-        extractedText = await extractFromPDF(input.fileBuffer);
+      case "docx": {
+        // Use Gemini for PDF and DOCX extraction
+        const mimeType = getMimeType(fileName);
+        try {
+          extractedText = await extractTextWithGemini(
+            input.fileBuffer,
+            mimeType,
+            fileName || (extension === "pdf" ? "uploaded.pdf" : "uploaded.docx")
+          );
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          throw new Error(
+            `Failed to extract text from ${extension.toUpperCase()}: ${errorMessage}`
+          );
+        }
         break;
-      case "docx":
-        extractedText = await extractFromDOCX(input.fileBuffer);
+      }
+      case "txt": {
+        // Direct text extraction for TXT files
+        try {
+          extractedText = input.fileBuffer.toString("utf-8");
+        } catch (error) {
+          throw new Error(
+            `Failed to extract text from TXT: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
         break;
-      case "txt":
-        extractedText = extractFromTXT(input.fileBuffer);
-        break;
+      }
       default:
         throw new Error(
           `Unsupported file type: ${extension}. Supported types: PDF, DOCX, TXT`
         );
+    }
+
+    // Validate extracted text
+    if (!extractedText || extractedText.trim().length < MIN_TEXT_LENGTH) {
+      throw new Error(
+        "No readable text found in this file. If your file is a scanned image, use OCR or upload the original text."
+      );
     }
 
     return normalizeText(extractedText);
@@ -43,140 +99,53 @@ export async function extractTextFromInput(
 }
 
 /**
- * Extract text from PDF buffer
- * Uses createRequire() to properly load externalized CommonJS modules in Netlify Functions
- */
-async function extractFromPDF(buffer: Buffer): Promise<string> {
-  try {
-    // Use createRequire for externalized CommonJS modules in Netlify Functions
-    // This works correctly with externalized modules while avoiding bundling
-    const { createRequire } = await import("module");
-    const require = createRequire(import.meta.url);
-    const pdfParseModule = require("pdf-parse");
-    
-    // Ensure buffer is a proper Buffer instance
-    const pdfBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-    
-    // Try accessing default export explicitly, fallback to module itself
-    const pdfParse = pdfParseModule.default || pdfParseModule;
-    
-    // Call pdf-parse with Buffer - try direct call first, then with options if needed
-    let data;
-    try {
-      // Try direct Buffer call (standard usage)
-      data = await pdfParse(pdfBuffer);
-    } catch (directError) {
-      // If direct call fails with filename error, try with options object
-      if (directError instanceof Error && directError.message.includes("filename")) {
-        data = await pdfParse(pdfBuffer, {});
-      } else {
-        throw directError;
-      }
-    }
-    
-    const extractedText = data.text || "";
-    
-    // Check if extracted text is empty or too short (likely a scanned PDF)
-    if (!extractedText || extractedText.trim().length < 50) {
-      throw new Error(
-        "No readable text found in this file. Please upload a text-based PDF (not a scanned image)."
-      );
-    }
-    
-    return extractedText;
-  } catch (error) {
-    // Re-throw our custom error as-is
-    if (error instanceof Error && error.message.includes("No readable text")) {
-      throw error;
-    }
-    throw new Error(
-      `Failed to extract text from PDF: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-}
-
-/**
- * Extract text from DOCX buffer
- */
-async function extractFromDOCX(buffer: Buffer): Promise<string> {
-  try {
-    const result = await mammoth.extractRawText({ buffer });
-    const extractedText = result.value || "";
-    
-    // Check if extracted text is empty or too short
-    if (!extractedText || extractedText.trim().length < 50) {
-      throw new Error(
-        "No readable text found in this file. The document may be empty or corrupted."
-      );
-    }
-    
-    return extractedText;
-  } catch (error) {
-    // Re-throw our custom error as-is
-    if (error instanceof Error && error.message.includes("No readable text")) {
-      throw error;
-    }
-    throw new Error(
-      `Failed to extract text from DOCX: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-}
-
-/**
- * Extract text from TXT buffer
- */
-function extractFromTXT(buffer: Buffer): string {
-  try {
-    const extractedText = buffer.toString("utf-8");
-    
-    // Check if extracted text is empty or too short
-    if (!extractedText || extractedText.trim().length < 50) {
-      throw new Error(
-        "No readable text found in this file. The file may be empty or contain only whitespace."
-      );
-    }
-    
-    return extractedText;
-  } catch (error) {
-    // Re-throw our custom error as-is
-    if (error instanceof Error && error.message.includes("No readable text")) {
-      throw error;
-    }
-    throw new Error(
-      `Failed to extract text from TXT: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-}
-
-/**
  * Normalize extracted text
  * - Remove excessive whitespace
- * - Strip bad characters
- * - Validate minimum length
+ * - Strip bad characters (including null bytes)
+ * - Preserve language
+ * - Cap at 200k characters (truncate but note original length)
  */
-function normalizeText(text: string): string {
+export function normalizeText(text: string): string {
   if (!text || typeof text !== "string") {
     throw new Error("Invalid text input: text is empty or not a string");
   }
 
-  // Remove excessive whitespace and normalize line breaks
+  // Remove null bytes and other control characters (except newlines and tabs)
   let normalized = text
-    .replace(/\r\n/g, "\n")
+    .replace(/\x00/g, "") // Remove null bytes
+    .replace(/\r\n/g, "\n") // Normalize line breaks
     .replace(/\r/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n") // Collapse multiple newlines
+    .replace(/[ \t]+/g, " ") // Collapse multiple spaces/tabs
     .trim();
 
   // Remove non-printable characters except newlines and tabs
   normalized = normalized.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, "");
 
-  // Validate minimum length (at least 50 characters)
-  if (normalized.length < 50) {
+  // Validate minimum length
+  if (normalized.length < MIN_TEXT_LENGTH) {
     throw new Error(
-      `Text is too short (${normalized.length} characters). Minimum required: 50 characters.`
+      `Text is too short (${normalized.length} characters). Minimum required: ${MIN_TEXT_LENGTH} characters.`
     );
   }
 
+  // Cap at maximum length (200k characters)
+  const originalLength = normalized.length;
+  if (normalized.length > MAX_TEXT_LENGTH) {
+    normalized = normalized.slice(0, MAX_TEXT_LENGTH);
+  }
+
+  // Store original length in a way that can be accessed later if needed
+  // (We'll handle this in the plagiarism checker to include in explanation)
   return normalized;
 }
 
+/**
+ * Get original text length before truncation (if truncated)
+ * This is a helper to track if text was truncated
+ */
+export function getOriginalTextLength(text: string, normalized: string): number {
+  // If normalized is shorter than original, it was truncated
+  // Otherwise return normalized length
+  return text.length > normalized.length ? text.length : normalized.length;
+}

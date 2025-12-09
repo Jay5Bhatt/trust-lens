@@ -28,6 +28,8 @@ export type AIDetectionResult = {
   verdict: AIVerdict;
 };
 
+export type AnalysisStatus = "success" | "partial_success" | "error";
+
 export type PlagiarismReport = {
   normalizedTextLength: number;
   plagiarismPercentage: number;
@@ -36,6 +38,7 @@ export type PlagiarismReport = {
   aiGeneratedLikelihood: number;
   aiVerdict: AIVerdict;
   explanation: string;
+  analysisStatus?: AnalysisStatus;
 };
 
 export type TextChunk = {
@@ -54,7 +57,7 @@ export type PlagiarismAPIResponse =
   | { success: true; data: PlagiarismReport }
   | {
       success: false;
-      errorType: "extraction_error" | "analysis_error" | "bad_request";
+      errorType: "extraction_error" | "analysis_error" | "upstream_error" | "bad_request";
       message: string;
       details?: string;
     };

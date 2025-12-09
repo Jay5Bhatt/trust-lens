@@ -1,8 +1,13 @@
 import type { WebSearchResult } from "../types/plagiarism";
+import { retryWithBackoff } from "../utils/retry";
+import { getCache, setCache, getChunkCacheKey } from "../utils/cache";
+
+const CACHE_TTL_SECONDS = 60 * 60 * 24; // 1 day
 
 /**
  * Search the web for a text chunk using SerpAPI
  * Returns search results with URL, title, and snippet
+ * Uses caching to avoid duplicate API calls
  */
 export async function searchWebForChunk(
   chunkText: string
@@ -14,6 +19,14 @@ export async function searchWebForChunk(
     return [];
   }
 
+  // Check cache first
+  const cacheKey = getChunkCacheKey(chunkText);
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    console.log("Web search cache hit");
+    return cached;
+  }
+
   try {
     // Truncate query if too long (SerpAPI has limits)
     const query = chunkText.slice(0, 500).trim();
@@ -21,42 +34,60 @@ export async function searchWebForChunk(
       return [];
     }
 
-    const url = new URL("https://serpapi.com/search");
-    url.searchParams.set("api_key", apiKey);
-    url.searchParams.set("q", query);
-    url.searchParams.set("engine", "google");
-    url.searchParams.set("num", "10"); // Get top 10 results
+    // Retry with exponential backoff
+    const results = await retryWithBackoff(
+      async () => {
+        const url = new URL("https://serpapi.com/search");
+        url.searchParams.set("api_key", apiKey);
+        url.searchParams.set("q", query);
+        url.searchParams.set("engine", "google");
+        url.searchParams.set("num", "10"); // Get top 10 results
 
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      headers: {
-        "Accept": "application/json",
-      },
-    });
+        const response = await fetch(url.toString(), {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`SerpAPI error: ${response.status} - ${errorText}`);
-      throw new Error(`SerpAPI request failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Parse SerpAPI response format
-    const results: WebSearchResult[] = [];
-
-    // Handle organic_results array
-    if (data.organic_results && Array.isArray(data.organic_results)) {
-      for (const result of data.organic_results) {
-        if (result.link) {
-          results.push({
-            url: result.link,
-            title: result.title,
-            snippet: result.snippet,
-          });
+        // Handle rate limiting (429)
+        if (response.status === 429) {
+          throw new Error("Rate limit exceeded. Please try again later.");
         }
-      }
-    }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`SerpAPI error: ${response.status} - ${errorText}`);
+          throw new Error(`SerpAPI request failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Parse SerpAPI response format
+        const parsedResults: WebSearchResult[] = [];
+
+        // Handle organic_results array
+        if (data.organic_results && Array.isArray(data.organic_results)) {
+          for (const result of data.organic_results) {
+            if (result.link) {
+              parsedResults.push({
+                url: result.link,
+                title: result.title,
+                snippet: result.snippet,
+              });
+            }
+          }
+        }
+
+        return parsedResults;
+      },
+      3, // maxRetries
+      500, // initialDelay
+      5000 // maxDelay
+    );
+
+    // Cache results
+    await setCache(cacheKey, results, CACHE_TTL_SECONDS);
 
     return results;
   } catch (error) {
@@ -73,11 +104,10 @@ export async function searchWebForChunk(
       errorMessage.includes("timeout") ||
       errorMessage.includes("SerpAPI request failed")
     ) {
-      throw error; // Re-throw critical errors so they propagate to plagiarismChecker
+      throw error; // Re-throw critical errors so they propagate
     }
-    // For non-critical errors, log and return empty array
-    console.error("Web search error:", error);
+    // For non-critical errors (rate limits, etc.), log and return empty array
+    console.error("Web search error (non-critical):", error);
     return [];
   }
 }
-
