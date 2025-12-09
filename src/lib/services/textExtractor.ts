@@ -44,14 +44,15 @@ export async function extractTextFromInput(
 
 /**
  * Extract text from PDF buffer
- * Uses dynamic import to avoid bundling pdf-parse (reduces function size)
+ * Uses createRequire() to properly load externalized CommonJS modules in Netlify Functions
  */
 async function extractFromPDF(buffer: Buffer): Promise<string> {
   try {
-    // Use dynamic import to avoid bundling pdf-parse into the function
-    // This reduces the function bundle size significantly
-    const pdfParseModule = await import("pdf-parse");
-    const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
+    // Use createRequire for externalized CommonJS modules in Netlify Functions
+    // This works correctly with externalized modules while avoiding bundling
+    const { createRequire } = await import("module");
+    const require = createRequire(import.meta.url);
+    const pdfParse = require("pdf-parse");
     
     const data = await pdfParse(buffer);
     const extractedText = data.text || "";
