@@ -1,9 +1,10 @@
 [build]
   functions = "netlify/functions"
   publish = "dist"
+  command = "npm run build"
 
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
+# Externalize heavy dependencies from function bundles to reduce size
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["pdf-parse", "mammoth", "@google/genai"]
 

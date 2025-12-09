@@ -1,9 +1,5 @@
-import * as pdfParseModule from "pdf-parse";
 import mammoth from "mammoth";
 import type { PlagiarismInput } from "../types/plagiarism";
-
-// Handle ESM/CommonJS compatibility for pdf-parse
-const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
 
 /**
  * Extract and normalize text from various input formats
@@ -48,9 +44,15 @@ export async function extractTextFromInput(
 
 /**
  * Extract text from PDF buffer
+ * Uses dynamic import to avoid bundling pdf-parse (reduces function size)
  */
 async function extractFromPDF(buffer: Buffer): Promise<string> {
   try {
+    // Use dynamic import to avoid bundling pdf-parse into the function
+    // This reduces the function bundle size significantly
+    const pdfParseModule = await import("pdf-parse");
+    const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
+    
     const data = await pdfParse(buffer);
     const extractedText = data.text || "";
     
