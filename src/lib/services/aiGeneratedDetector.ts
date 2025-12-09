@@ -69,7 +69,7 @@ export async function detectAIGeneratedText(
   if (!ai) {
     console.warn("Gemini API key not available, returning uncertain result");
     return {
-      likelihood: 0,
+      likelihood: 0.5,
       verdict: "uncertain",
     };
   }
