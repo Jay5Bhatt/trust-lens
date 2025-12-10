@@ -262,11 +262,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error("[check-plagiarism] pipeline initialization error", {
         correlationId,
         error: pipelineError,
+        errorType: typeof pipelineError,
+        errorMessage: pipelineError instanceof Error ? pipelineError.message : String(pipelineError),
+        errorStack: pipelineError instanceof Error ? pipelineError.stack : undefined,
       });
       safeSendResponse({
         success: false,
         errorType: "analysis_error",
-        message: "Failed to initialize plagiarism pipeline.",
+        message: "Failed to initialize plagiarism pipeline. Please try again.",
       });
       return;
     }
@@ -281,7 +284,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         hasFileBuffer: !!buffer,
         fileName: body.fileName,
         fileSize: buffer?.length,
+        textLength: body.text?.length,
       });
+
+      // Ensure pipeline is a function before calling
+      if (typeof pipeline !== "function") {
+        throw new Error("Pipeline is not a function. Pipeline initialization may have failed.");
+      }
 
       result = await withTimeout(
         pipeline({
@@ -292,6 +301,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         REQUEST_TIMEOUT_MS,
         "Analysis timed out. Please try again with a smaller document or shorter text."
       );
+      
+      // Validate result is a valid PipelineResult
+      if (!result || typeof result !== "object") {
+        throw new Error("Pipeline returned invalid result: not an object");
+      }
+      if (typeof result.ok !== "boolean") {
+        throw new Error("Pipeline returned invalid result: missing 'ok' field");
+      }
       
       const pipelineElapsed = Date.now() - pipelineStartTime;
       console.log("[check-plagiarism] pipeline completed", {

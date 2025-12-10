@@ -1,5 +1,6 @@
 import type { PlagiarismInput } from "../types/plagiarism.js";
 import { extractTextWithGemini } from "./geminiTextExtractor.js";
+import { withTimeout } from "../utils/timeout.js";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const MAX_TEXT_LENGTH = 200_000; // 200k characters
@@ -55,13 +56,24 @@ export async function extractTextFromInput(
         // Use Gemini for PDF and DOCX extraction
         const mimeType = getMimeType(fileName);
         try {
-          extractedText = await extractTextWithGemini(
-            input.fileBuffer,
-            mimeType,
-            fileName || (extension === "pdf" ? "uploaded.pdf" : "uploaded.docx")
+          // Timeout PDF extraction at 4 seconds to leave 4 seconds for analysis (8s total limit)
+          extractedText = await withTimeout(
+            extractTextWithGemini(
+              input.fileBuffer,
+              mimeType,
+              fileName || (extension === "pdf" ? "uploaded.pdf" : "uploaded.docx")
+            ),
+            4000, // 4 seconds max for extraction
+            "File extraction timed out"
           );
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
+          // Check if it's a timeout error
+          if (errorMessage.includes("timed out") || errorMessage.includes("timeout")) {
+            throw new Error(
+              `EXTRACTION_ERROR: File extraction timed out after 4 seconds. Large PDFs can take too long. Please try a smaller file (under 1MB) or paste the text directly for faster analysis.`
+            );
+          }
           throw new Error(
             `EXTRACTION_ERROR: Failed to extract text from ${extension.toUpperCase()}: ${errorMessage}`
           );

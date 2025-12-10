@@ -1,6 +1,15 @@
 import { motion } from "framer-motion";
 import { Upload, FileText, Type, ArrowRight } from "lucide-react";
 import { useRef, useState } from "react";
+import { Button } from "../ui/button";
+
+const SAMPLE_PLAGIARISM_TEXT = `
+Climate change is one of the most debated topics of this century. Many articles online repeat the same facts, statistics, and phrases without adding any new perspective.
+
+In this short passage, the first paragraph imitates a very generic, overused style you can find on thousands of websites. The second paragraph, however, is more personal and reflective, which usually looks more like original writing.
+
+When you run this example through AI/Plagiarism Check, you should see some overlap risk from the generic lines, but also a lower risk overall and a medium AI-likelihood score.
+`.trim();
 
 type TextUploadAreaProps = {
   onTextSubmit: (text: string) => void;
@@ -81,6 +90,10 @@ export function TextUploadArea({
     onTextSubmit(trimmedText);
   };
 
+  const handleUseExample = () => {
+    setText(SAMPLE_PLAGIARISM_TEXT);
+  };
+
   return (
     <div className="space-y-6">
       {/* Toggle between text input and file upload */}
@@ -113,6 +126,22 @@ export function TextUploadArea({
         /* Text Input Area */
         <div className="space-y-4">
           <div className="glass-card rounded-xl p-4">
+            {/* Example button and helper text */}
+            <div className="mb-4 space-y-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleUseExample}
+                disabled={disabled}
+                className="text-xs"
+              >
+                Use Example Text
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Tip: Use the example text to quickly demo how AI/Plagiarism Check works.
+              </p>
+            </div>
+            
             <textarea
               ref={textareaRef}
               value={text}
