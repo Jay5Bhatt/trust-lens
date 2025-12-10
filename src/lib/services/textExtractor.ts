@@ -30,7 +30,7 @@ export async function extractTextFromInput(
   // If raw text is provided, use it directly
   if (input.text) {
     if (!input.text.trim()) {
-      throw new Error("Text input is empty");
+      throw new Error("BAD_REQUEST: Text input is empty");
     }
     return normalizeText(input.text);
   }
@@ -43,7 +43,7 @@ export async function extractTextFromInput(
     // Check file size limit
     if (input.fileBuffer.length > MAX_FILE_SIZE_BYTES) {
       throw new Error(
-        `File too large. Limit 10MB. Your file is ${(input.fileBuffer.length / 1024 / 1024).toFixed(2)}MB.`
+        `BAD_REQUEST: File too large. Limit 10MB. Your file is ${(input.fileBuffer.length / 1024 / 1024).toFixed(2)}MB.`
       );
     }
 
@@ -63,7 +63,7 @@ export async function extractTextFromInput(
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           throw new Error(
-            `Failed to extract text from ${extension.toUpperCase()}: ${errorMessage}`
+            `EXTRACTION_ERROR: Failed to extract text from ${extension.toUpperCase()}: ${errorMessage}`
           );
         }
         break;
@@ -74,28 +74,28 @@ export async function extractTextFromInput(
           extractedText = input.fileBuffer.toString("utf-8");
         } catch (error) {
           throw new Error(
-            `Failed to extract text from TXT: ${error instanceof Error ? error.message : String(error)}`
+            `EXTRACTION_ERROR: Failed to extract text from TXT: ${error instanceof Error ? error.message : String(error)}`
           );
         }
         break;
       }
       default:
         throw new Error(
-          `Unsupported file type: ${extension}. Supported types: PDF, DOCX, TXT`
+          `BAD_REQUEST: Unsupported file type: ${extension}. Supported types: PDF, DOCX, TXT`
         );
     }
 
     // Validate extracted text
     if (!extractedText || extractedText.trim().length < MIN_TEXT_LENGTH) {
       throw new Error(
-        "No readable text found in this file. If your file is a scanned image, use OCR or upload the original text."
+        "EXTRACTION_ERROR: No readable text found in this file. If your file is a scanned image, use OCR or upload the original text."
       );
     }
 
     return normalizeText(extractedText);
   }
 
-  throw new Error("Either 'text' or 'fileBuffer' must be provided");
+  throw new Error("BAD_REQUEST: Either 'text' or 'fileBuffer' must be provided");
 }
 
 /**
@@ -107,7 +107,7 @@ export async function extractTextFromInput(
  */
 export function normalizeText(text: string): string {
   if (!text || typeof text !== "string") {
-    throw new Error("Invalid text input: text is empty or not a string");
+    throw new Error("BAD_REQUEST: Invalid text input: text is empty or not a string");
   }
 
   // Remove null bytes and other control characters (except newlines and tabs)
@@ -125,7 +125,7 @@ export function normalizeText(text: string): string {
   // Validate minimum length
   if (normalized.length < MIN_TEXT_LENGTH) {
     throw new Error(
-      `Text is too short (${normalized.length} characters). Minimum required: ${MIN_TEXT_LENGTH} characters.`
+      `BAD_REQUEST: Text is too short (${normalized.length} characters). Minimum required: ${MIN_TEXT_LENGTH} characters.`
     );
   }
 

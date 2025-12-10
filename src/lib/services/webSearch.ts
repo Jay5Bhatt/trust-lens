@@ -15,8 +15,7 @@ export async function searchWebForChunk(
   const apiKey = process.env.SEARCH_API_KEY;
 
   if (!apiKey) {
-    console.warn("SEARCH_API_KEY not set, skipping web search");
-    return [];
+    throw new Error("BAD_REQUEST: Missing SEARCH_API_KEY on server.");
   }
 
   // Check cache first
@@ -52,13 +51,13 @@ export async function searchWebForChunk(
 
         // Handle rate limiting (429)
         if (response.status === 429) {
-          throw new Error("Rate limit exceeded. Please try again later.");
+          throw new Error("UPSTREAM_ERROR: Rate limit exceeded. Please try again later.");
         }
 
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`SerpAPI error: ${response.status} - ${errorText}`);
-          throw new Error(`SerpAPI request failed: ${response.status}`);
+          throw new Error(`UPSTREAM_ERROR: SerpAPI request failed: ${response.status}`);
         }
 
         const data = await response.json();
@@ -102,8 +101,14 @@ export async function searchWebForChunk(
       errorMessage.includes("network") ||
       errorMessage.includes("fetch failed") ||
       errorMessage.includes("timeout") ||
-      errorMessage.includes("SerpAPI request failed")
+      errorMessage.includes("SerpAPI request failed") ||
+      errorMessage.includes("UPSTREAM_ERROR") ||
+      errorMessage.includes("BAD_REQUEST")
     ) {
+      // Ensure error has proper prefix
+      if (!errorMessage.includes("UPSTREAM_ERROR") && !errorMessage.includes("BAD_REQUEST")) {
+        throw new Error(`UPSTREAM_ERROR: ${errorMessage}`);
+      }
       throw error; // Re-throw critical errors so they propagate
     }
     // For non-critical errors (rate limits, etc.), log and return empty array

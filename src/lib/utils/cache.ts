@@ -3,11 +3,17 @@ import Redis from "ioredis";
 
 let redisClient: Redis | null = null;
 let lruCache: LRUCache<string, any> | null = null;
+let cacheInitialized = false;
 
 /**
  * Initialize cache - use Redis if REDIS_URL is provided, otherwise use LRU cache
+ * Lazy-loaded to prevent import-time errors
  */
 function initializeCache() {
+  if (cacheInitialized) {
+    return;
+  }
+
   if (process.env.REDIS_URL) {
     try {
       redisClient = new Redis(process.env.REDIS_URL, {
@@ -18,6 +24,7 @@ function initializeCache() {
         },
       });
       console.log("Cache: Using Redis");
+      cacheInitialized = true;
       return;
     } catch (error) {
       console.warn("Cache: Redis initialization failed, falling back to LRU cache", error);
@@ -30,15 +37,15 @@ function initializeCache() {
     ttl: 1000 * 60 * 60 * 24, // 24 hours TTL
   });
   console.log("Cache: Using in-memory LRU cache");
+  cacheInitialized = true;
 }
-
-// Initialize on module load
-initializeCache();
 
 /**
  * Get value from cache
  */
 export async function getCache(key: string): Promise<any | null> {
+  initializeCache(); // Lazy initialization
+  
   if (redisClient) {
     try {
       const value = await redisClient.get(key);
@@ -60,6 +67,8 @@ export async function getCache(key: string): Promise<any | null> {
  * Set value in cache
  */
 export async function setCache(key: string, value: any, ttlSeconds?: number): Promise<void> {
+  initializeCache(); // Lazy initialization
+  
   if (redisClient) {
     try {
       const serialized = JSON.stringify(value);
@@ -85,6 +94,8 @@ export async function setCache(key: string, value: any, ttlSeconds?: number): Pr
  * Delete value from cache
  */
 export async function deleteCache(key: string): Promise<void> {
+  initializeCache(); // Lazy initialization
+  
   if (redisClient) {
     try {
       await redisClient.del(key);

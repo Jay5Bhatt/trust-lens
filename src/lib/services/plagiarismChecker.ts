@@ -186,7 +186,11 @@ export async function checkPlagiarism(
   } catch (error) {
     // Critical error occurred
     const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Plagiarism analysis failed: ${errorMessage}`);
+    // Preserve error prefixes if they exist
+    if (errorMessage.includes("BAD_REQUEST:") || errorMessage.includes("EXTRACTION_ERROR:") || errorMessage.includes("UPSTREAM_ERROR:")) {
+      throw error;
+    }
+    throw new Error(`UPSTREAM_ERROR: Plagiarism analysis failed: ${errorMessage}`);
   }
 
   // Check if search API is available
@@ -241,9 +245,15 @@ export async function checkPlagiarism(
       errorMessage.includes("network") ||
       errorMessage.includes("fetch failed") ||
       errorMessage.includes("timeout") ||
-      errorMessage.includes("service error")
+      errorMessage.includes("service error") ||
+      errorMessage.includes("UPSTREAM_ERROR") ||
+      errorMessage.includes("BAD_REQUEST")
     ) {
-      throw new Error(`AI detection service error: ${errorMessage}`);
+      // Preserve error prefixes if they exist
+      if (errorMessage.includes("UPSTREAM_ERROR") || errorMessage.includes("BAD_REQUEST")) {
+        throw error;
+      }
+      throw new Error(`UPSTREAM_ERROR: AI detection service error: ${errorMessage}`);
     }
     // For non-critical errors, log and use fallback
     console.error("AI detection failed:", error);

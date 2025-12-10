@@ -101,8 +101,14 @@ ${sourceText.slice(0, 500)}`;
       errorMessage.includes("network") ||
       errorMessage.includes("fetch failed") ||
       errorMessage.includes("timeout") ||
-      errorMessage.includes("service error")
+      errorMessage.includes("service error") ||
+      errorMessage.includes("UPSTREAM_ERROR") ||
+      errorMessage.includes("BAD_REQUEST")
     ) {
+      // Ensure error has proper prefix
+      if (!errorMessage.includes("UPSTREAM_ERROR") && !errorMessage.includes("BAD_REQUEST")) {
+        throw new Error(`UPSTREAM_ERROR: ${errorMessage}`);
+      }
       throw error; // Re-throw critical errors so they propagate
     }
     // For non-critical errors (parsing, etc.), log and return 0
@@ -134,12 +140,7 @@ export async function scoreChunkAgainstSources(
 
   const ai = getGeminiClient();
   if (!ai) {
-    console.warn("Gemini API key not available, skipping similarity scoring");
-    return {
-      suspicious: false,
-      similarityScore: 0,
-      matches: [],
-    };
+    throw new Error("BAD_REQUEST: Missing GEMINI_API_KEY on server.");
   }
 
   const matches: SourceMatch[] = [];
@@ -173,9 +174,16 @@ export async function scoreChunkAgainstSources(
         errorMessage.includes("network") ||
         errorMessage.includes("fetch failed") ||
         errorMessage.includes("timeout") ||
-        errorMessage.includes("service error")
+        errorMessage.includes("service error") ||
+        errorMessage.includes("UPSTREAM_ERROR") ||
+        errorMessage.includes("BAD_REQUEST")
       ) {
-        criticalError = error instanceof Error ? error : new Error(String(error));
+        // Ensure error has proper prefix
+        if (!errorMessage.includes("UPSTREAM_ERROR") && !errorMessage.includes("BAD_REQUEST")) {
+          criticalError = new Error(`UPSTREAM_ERROR: ${errorMessage}`);
+        } else {
+          criticalError = error instanceof Error ? error : new Error(String(error));
+        }
         break; // Stop processing and propagate critical error
       }
       // For non-critical errors, log and continue with other sources

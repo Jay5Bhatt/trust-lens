@@ -28,7 +28,7 @@ export async function extractTextWithGemini(
 ): Promise<string> {
   const ai = getGeminiClient();
   if (!ai) {
-    throw new Error("Gemini API key not available");
+    throw new Error("BAD_REQUEST: Missing GEMINI_API_KEY on server.");
   }
 
   // Ensure fileName is non-empty
@@ -86,6 +86,6 @@ export async function extractTextWithGemini(
     4500 // maxDelay
   ).catch((error) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Text extraction failed: ${errorMessage}`);
+    throw new Error(`EXTRACTION_ERROR: Text extraction failed: ${errorMessage}`);
   });
 }

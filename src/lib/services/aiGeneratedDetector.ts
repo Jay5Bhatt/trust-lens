@@ -32,11 +32,7 @@ export async function detectAIGeneratedText(
 ): Promise<AIDetectionResult> {
   const ai = getGeminiClient();
   if (!ai) {
-    console.warn("Gemini API key not available, returning uncertain result");
-    return {
-      likelihood: 0.5,
-      verdict: "uncertain",
-    };
+    throw new Error("BAD_REQUEST: Missing GEMINI_API_KEY on server.");
   }
 
   // Truncate text if too long (cap at 200k)
@@ -139,10 +135,16 @@ ${textToAnalyze}`;
       errorMessage.includes("5xx") ||
       errorMessage.includes("network") ||
       errorMessage.includes("fetch failed") ||
-      errorMessage.includes("timeout")
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("UPSTREAM_ERROR") ||
+      errorMessage.includes("BAD_REQUEST")
     ) {
+      // Ensure error has proper prefix
+      if (!errorMessage.includes("UPSTREAM_ERROR") && !errorMessage.includes("BAD_REQUEST")) {
+        throw new Error(`UPSTREAM_ERROR: AI detection service error: ${errorMessage}`);
+      }
       // Re-throw critical errors so they propagate to the caller
-      throw new Error(`AI detection service error: ${errorMessage}`);
+      throw error;
     }
     // For non-critical errors (parsing, etc.), log and return uncertain
     console.error("Error in AI detection:", error);
