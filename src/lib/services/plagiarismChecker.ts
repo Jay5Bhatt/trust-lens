@@ -13,8 +13,9 @@ import type {
 
 const CHUNK_SIZE = 1500; // Characters per chunk
 const CHUNK_OVERLAP = 200; // Overlap between chunks
-const MAX_CONCURRENT_CHUNKS = 3; // Process max 3 chunks in parallel
-const RATE_LIMIT_DELAY_MS = 200; // Delay between chunk processing
+const MAX_CONCURRENT_CHUNKS = 5; // Process max 5 chunks in parallel (increased for speed)
+const RATE_LIMIT_DELAY_MS = 100; // Delay between chunk processing (reduced for speed)
+const MAX_CHUNKS_TO_PROCESS = 4; // Limit chunks to stay within 8s timeout (free tier limit)
 
 /**
  * Chunk text into overlapping segments for analysis
@@ -164,6 +165,11 @@ export async function checkPlagiarism(
 
   // Step 2: Chunk text
   const chunks = chunkText(fullText);
+  
+  // Limit chunks to avoid timeout (free tier has 8s limit)
+  const totalChunks = chunks.length;
+  const chunksToProcess = chunks.slice(0, MAX_CHUNKS_TO_PROCESS);
+  const wasLimited = chunksToProcess.length < totalChunks;
 
   // Step 3: Process chunks with concurrency control
   let suspiciousSegments: SuspiciousSegment[] = [];
@@ -172,11 +178,11 @@ export async function checkPlagiarism(
   let analysisStatus: AnalysisStatus = "success";
 
   try {
-    const { segments, unscoredCount, errors } = await processChunksConcurrently(chunks);
+    const { segments, unscoredCount, errors } = await processChunksConcurrently(chunksToProcess);
     suspiciousSegments = segments;
     unscoredChunks = unscoredCount;
 
-    if (unscoredCount > 0) {
+    if (unscoredCount > 0 || wasLimited) {
       analysisStatus = "partial_success";
     }
 
@@ -284,7 +290,10 @@ export async function checkPlagiarism(
     aiDetection,
     searchApiFailed,
     unscoredChunks,
-    normalizedTextLength
+    normalizedTextLength,
+    wasLimited,
+    totalChunks,
+    chunksToProcess.length
   );
 
   return {
@@ -309,13 +318,22 @@ function generateExplanation(
   aiDetection: { likelihood: number; verdict: string },
   searchApiFailed: boolean,
   unscoredChunks: number,
-  textLength: number
+  textLength: number,
+  wasLimited?: boolean,
+  totalChunks?: number,
+  processedChunks?: number
 ): string {
   const parts: string[] = [];
 
   if (searchApiFailed) {
     parts.push(
       "Web search API is not configured. Plagiarism detection against public sources was skipped."
+    );
+  }
+
+  if (wasLimited && totalChunks && processedChunks) {
+    parts.push(
+      `Note: Document was large (${totalChunks} chunk${totalChunks !== 1 ? "s" : ""}). Analysis was limited to first ${processedChunks} chunk${processedChunks !== 1 ? "s" : ""} to stay within timeout limits. Results are based on a sample of the document.`
     );
   }
 
