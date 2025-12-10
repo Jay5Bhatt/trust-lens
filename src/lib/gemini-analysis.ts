@@ -1,5 +1,5 @@
-import { analyzeWithGeminiVision } from "./geminiForensics";
-import type { GeminiForensicAnalysis } from "./types/media-analysis";
+import { analyzeWithGeminiVision } from "./geminiForensics.js";
+import type { GeminiForensicAnalysis } from "./types/media-analysis.js";
 
 /**
  * Analyze video using Gemini forensic analysis

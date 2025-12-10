@@ -1,7 +1,7 @@
-import { extractTextFromInput } from "./textExtractor";
-import { searchWebForChunk } from "./webSearch";
-import { scoreChunkAgainstSources } from "./similarityScorer";
-import { detectAIGeneratedText } from "./aiGeneratedDetector";
+import { extractTextFromInput } from "./textExtractor.js";
+import { searchWebForChunk } from "./webSearch.js";
+import { scoreChunkAgainstSources } from "./similarityScorer.js";
+import { detectAIGeneratedText } from "./aiGeneratedDetector.js";
 import type {
   PlagiarismInput,
   PlagiarismReport,
@@ -9,7 +9,7 @@ import type {
   SuspiciousSegment,
   RiskLevel,
   AnalysisStatus,
-} from "../types/plagiarism";
+} from "../types/plagiarism.js";
 
 const CHUNK_SIZE = 1500; // Characters per chunk
 const CHUNK_OVERLAP = 200; // Overlap between chunks

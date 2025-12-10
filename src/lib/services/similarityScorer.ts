@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
-import type { TextChunk, SourceMatch, WebSearchResult } from "../types/plagiarism";
-import { retryWithBackoff } from "../utils/retry";
-import { getCache, setCache, getSimilarityCacheKey } from "../utils/cache";
+import type { TextChunk, SourceMatch, WebSearchResult } from "../types/plagiarism.js";
+import { retryWithBackoff } from "../utils/retry.js";
+import { getCache, setCache, getSimilarityCacheKey } from "../utils/cache.js";
 
 const CACHE_TTL_SECONDS = 60 * 60 * 24; // 1 day
 const TOP_N_RESULTS = 5; // Process top 5 results per chunk

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { analyzeVideo } from "../src/lib/gemini-analysis";
+import { analyzeVideo } from "../src/lib/gemini-analysis.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle CORS
@@ -36,5 +36,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
 
 

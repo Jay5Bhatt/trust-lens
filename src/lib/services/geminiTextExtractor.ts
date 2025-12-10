@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { retryWithBackoff } from "../utils/retry";
+import { retryWithBackoff } from "../utils/retry.js";
 
 /**
  * Get Gemini API client

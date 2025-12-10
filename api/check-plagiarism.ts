@@ -47,7 +47,7 @@ function sendJSONResponse(
 async function getPipeline(): Promise<(input: any) => Promise<PipelineResult>> {
   try {
     // Use relative import - Vercel should resolve this correctly
-    const mod = await import("../src/lib/services/plagiarismPipeline");
+    const mod = await import("../src/lib/services/plagiarismPipeline.js");
     if (!mod || typeof mod.runPlagiarismPipeline !== "function") {
       throw new Error("Pipeline function not found in module");
     }

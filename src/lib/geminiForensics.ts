@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import type { GeminiForensicAnalysis, ForensicVerdict } from "./types/media-analysis";
+import type { GeminiForensicAnalysis, ForensicVerdict } from "./types/media-analysis.js";
 
 /**
  * The exact analysis prompt as specified
@@ -51,9 +51,10 @@ function getGeminiClient(): GoogleGenAI | null {
   }
   
   // Fallback to Vite environment variable (for browser/client-side)
-  if (!apiKey) {
+  // Only use import.meta.env in browser/Vite context
+  if (!apiKey && typeof window !== "undefined") {
     try {
-      apiKey = import.meta?.env?.VITE_GEMINI_API_KEY;
+      apiKey = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
     } catch (e) {
       apiKey = undefined;
     }

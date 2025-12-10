@@ -1,5 +1,5 @@
-import { checkPlagiarism } from "./plagiarismChecker";
-import type { PlagiarismInput, PlagiarismReport } from "../types/plagiarism";
+import { checkPlagiarism } from "./plagiarismChecker.js";
+import type { PlagiarismInput, PlagiarismReport } from "../types/plagiarism.js";
 
 export type PipelineResult = {
   ok: boolean;

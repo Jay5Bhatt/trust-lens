@@ -1,6 +1,6 @@
-import { analyzeMetadata } from "./metadataAnalyzer";
-import { analyzeWithGeminiVision } from "./geminiForensics";
-import type { CombinedAnalysisResult } from "./types/media-analysis";
+import { analyzeMetadata } from "./metadataAnalyzer.js";
+import { analyzeWithGeminiVision } from "./geminiForensics.js";
+import type { CombinedAnalysisResult } from "./types/media-analysis.js";
 
 /**
  * Normalize input to Buffer/Uint8Array
@@ -44,6 +44,7 @@ export async function analyzeImageMedia(
     forensic,
   };
 }
+
 
 
 

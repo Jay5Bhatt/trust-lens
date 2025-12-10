@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
-import type { AIDetectionResult, AIVerdict } from "../types/plagiarism";
-import { retryWithBackoff } from "../utils/retry";
-import { getCache, setCache, getAICacheKey } from "../utils/cache";
+import type { AIDetectionResult, AIVerdict } from "../types/plagiarism.js";
+import { retryWithBackoff } from "../utils/retry.js";
+import { getCache, setCache, getAICacheKey } from "../utils/cache.js";
 
 const CACHE_TTL_SECONDS = 60 * 60 * 24; // 1 day
 const MAX_TEXT_LENGTH = 200_000; // 200k characters

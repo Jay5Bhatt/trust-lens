@@ -1,5 +1,5 @@
-import type { PlagiarismInput } from "../types/plagiarism";
-import { extractTextWithGemini } from "./geminiTextExtractor";
+import type { PlagiarismInput } from "../types/plagiarism.js";
+import { extractTextWithGemini } from "./geminiTextExtractor.js";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const MAX_TEXT_LENGTH = 200_000; // 200k characters

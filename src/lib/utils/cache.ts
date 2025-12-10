@@ -1,7 +1,8 @@
 import { LRUCache } from "lru-cache";
 import Redis from "ioredis";
+import type { Redis as RedisType } from "ioredis";
 
-let redisClient: Redis | null = null;
+let redisClient: RedisType | null = null;
 let lruCache: LRUCache<string, any> | null = null;
 let cacheInitialized = false;
 

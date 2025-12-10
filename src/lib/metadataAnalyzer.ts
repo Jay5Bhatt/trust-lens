@@ -1,5 +1,5 @@
 import exifr from "exifr";
-import type { MetadataAnalysis, MetadataAnomalySeverity } from "./types/media-analysis";
+import type { MetadataAnalysis, MetadataAnomalySeverity } from "./types/media-analysis.js";
 
 /**
  * Analyze EXIF metadata from image data
@@ -129,6 +129,7 @@ export async function analyzeMetadata(input: Buffer | string): Promise<MetadataA
     };
   }
 }
+
 
 
 

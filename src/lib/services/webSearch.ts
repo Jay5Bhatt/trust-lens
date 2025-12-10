@@ -1,6 +1,6 @@
-import type { WebSearchResult } from "../types/plagiarism";
-import { retryWithBackoff } from "../utils/retry";
-import { getCache, setCache, getChunkCacheKey } from "../utils/cache";
+import type { WebSearchResult } from "../types/plagiarism.js";
+import { retryWithBackoff } from "../utils/retry.js";
+import { getCache, setCache, getChunkCacheKey } from "../utils/cache.js";
 
 const CACHE_TTL_SECONDS = 60 * 60 * 24; // 1 day
 

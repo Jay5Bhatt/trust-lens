@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { analyzeImageMedia } from "../src/lib/mediaAnalyzer";
+import { analyzeImageMedia } from "../src/lib/mediaAnalyzer.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle CORS
@@ -37,5 +37,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
 
 
