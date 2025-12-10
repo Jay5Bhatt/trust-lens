@@ -345,7 +345,12 @@ export function DemoSection() {
               </button>
             </div>
 
-            <TabsContent value="image" className="mt-0">
+            <TabsContent 
+              value="image" 
+              className="mt-0" 
+              forceMount={activeTab === "image"}
+              style={activeTab === "image" ? { display: "block" } : undefined}
+            >
               <div className="grid lg:grid-cols-5 gap-8 lg:gap-10">
                 <div className="lg:col-span-2">
                   <UploadArea 
@@ -366,7 +371,12 @@ export function DemoSection() {
               </div>
             </TabsContent>
 
-            <TabsContent value="text" className="mt-0">
+            <TabsContent 
+              value="text" 
+              className="mt-0" 
+              forceMount={activeTab === "text"}
+              style={activeTab === "text" ? { display: "block" } : undefined}
+            >
               <div className="grid lg:grid-cols-5 gap-8 lg:gap-10">
                 <div className="lg:col-span-2">
                   <TextUploadArea 
