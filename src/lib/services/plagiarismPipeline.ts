@@ -12,10 +12,24 @@ export type PipelineResult = {
  * Safe wrapper for plagiarism checking pipeline
  * Catches all errors and returns structured result instead of throwing
  */
+/**
+ * Safe wrapper for plagiarism checking pipeline
+ * Catches all errors and returns structured result instead of throwing
+ * This function NEVER throws - it always returns a PipelineResult
+ */
 export async function runPlagiarismPipeline(
   input: PlagiarismInput
 ): Promise<PipelineResult> {
   try {
+    // Validate input
+    if (!input || (typeof input !== "object")) {
+      return {
+        ok: false,
+        errorType: "bad_request",
+        message: "Invalid input: expected an object with 'text' or 'fileBuffer'.",
+      };
+    }
+
     const hasText = typeof input?.text === "string" && input.text.trim().length > 0;
     const hasFile = !!input?.fileBuffer;
 
@@ -28,10 +42,22 @@ export async function runPlagiarismPipeline(
     }
 
     // Delegate to existing checker
+    // This may throw, but we catch it below
     const report = await checkPlagiarism(input);
+    
+    // Validate report
+    if (!report || typeof report !== "object") {
+      return {
+        ok: false,
+        errorType: "analysis_error",
+        message: "Plagiarism checker returned invalid result.",
+      };
+    }
+
     return { ok: true, report };
   } catch (err: any) {
-    const raw = String(err?.message || "Unknown error");
+    // Catch ANY error - including non-Error objects, null, undefined, etc.
+    const raw = String(err?.message || err?.toString() || "Unknown error");
 
     let errorType: PipelineResult["errorType"] = "analysis_error";
 
@@ -52,7 +78,7 @@ export async function runPlagiarismPipeline(
     return {
       ok: false,
       errorType,
-      message: message || raw,
+      message: message || "An unexpected error occurred during analysis.",
     };
   }
 }

@@ -1,8 +1,30 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { runPlagiarismPipeline } from "../src/lib/services/plagiarismPipeline";
+
+// Use a lazy dynamic import so that import-time errors can be caught
+type PipelineResult = {
+  ok: boolean;
+  report?: any;
+  errorType?: "bad_request" | "extraction_error" | "upstream_error" | "analysis_error";
+  message?: string;
+};
+
+async function getPipeline(): Promise<(input: any) => Promise<PipelineResult>> {
+  try {
+    const mod = await import("../src/lib/services/plagiarismPipeline");
+    return mod.runPlagiarismPipeline as (input: any) => Promise<PipelineResult>;
+  } catch (err: any) {
+    console.error("[check-plagiarism] failed to import pipeline", err);
+    // Return a stub pipeline that always reports an error
+    return async () => ({
+      ok: false,
+      errorType: "analysis_error",
+      message: "Failed to load plagiarism pipeline on server.",
+    });
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const correlationId = crypto.randomUUID?.() ?? String(Date.now());
+  const correlationId = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
   console.log("[check-plagiarism] start", { correlationId, method: req.method });
 
   try {
@@ -21,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(200).json({
         success: false,
         errorType: "bad_request",
-        message: "Only POST is allowed.",
+        message: "Only POST is allowed for this endpoint.",
       });
       return;
     }
@@ -59,8 +81,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Run pipeline
-    const result = await runPlagiarismPipeline({
+    // Get pipeline (dynamic import)
+    const pipeline = await getPipeline();
+    const result = await pipeline({
       text: body.text,
       fileBuffer: buffer,
       fileName: body.fileName,
@@ -76,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(200).json({
         success: false,
         errorType: result.errorType || "analysis_error",
-        message: result.message || "Analysis failed.",
+        message: result.message || "Analysis failed due to an unknown error.",
       });
       return;
     }
@@ -93,6 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stack: err?.stack,
     });
 
+    // IMPORTANT: still 200, never 500
     res.status(200).json({
       success: false,
       errorType: "analysis_error",

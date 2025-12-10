@@ -26,6 +26,37 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 /**
+ * Robust API call that always reads JSON and never throws on !response.ok
+ */
+async function callCheckPlagiarism(payload: any): Promise<PlagiarismAPIResponse> {
+  const response = await fetch("/api/check-plagiarism", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  let json: any = null;
+
+  try {
+    json = await response.json();
+  } catch (err) {
+    // If server returns non-JSON, fall back to text
+    const text = await response.text().catch(() => "");
+    throw new Error(
+      `Server returned invalid JSON (status ${response.status}): ${text || "no body"}`
+    );
+  }
+
+  // At this point we ALWAYS have a JSON object.
+  // The backend uses { success: true/false, ... }.
+  if (!json || typeof json !== "object") {
+    throw new Error("Unexpected response format from server.");
+  }
+
+  return json;
+}
+
+/**
  * Browser-side API wrapper for plagiarism checking
  * Calls the Vercel API route endpoint
  */
@@ -45,43 +76,28 @@ export async function checkPlagiarismAPI(
     throw new Error("Either 'text' or 'fileBuffer' must be provided");
   }
 
-  let response: Response;
   try {
-    response = await fetch("/api/check-plagiarism", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    // Handle network errors (fetch failed, CORS, etc.)
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Network error: ${errorMessage}. Please check your connection and try again.`);
-  }
+    const json = await callCheckPlagiarism(body);
 
-  // Parse response JSON
-  let responseData: PlagiarismAPIResponse;
-  try {
-    responseData = await response.json();
-  } catch (error) {
-    // If JSON parsing fails, throw with HTTP status
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  // Check for success flag
-  if (!response.ok || !responseData.success) {
-    // Handle error response
-    if (!responseData.success) {
-      const errorMessage = responseData.message || `HTTP error! status: ${response.status}`;
+    // Check success flag - backend always returns JSON with success field
+    if (json.success === true) {
+      if (!json.data) {
+        throw new Error("Server returned success but no data field.");
+      }
+      return json.data;
+    } else {
+      // Backend returned error in structured format
+      const errorMessage = json.message || "Analysis failed.";
       const error = new Error(errorMessage);
       // Attach errorType to error object for frontend use
-      (error as any).errorType = responseData.errorType;
+      (error as any).errorType = json.errorType;
       throw error;
     }
-    // Fallback for non-OK responses without structured error
-    throw new Error(`HTTP error! status: ${response.status}`);
+  } catch (error) {
+    // Re-throw network errors and other exceptions
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Unexpected error while contacting server.");
   }
-
-  // Return the PlagiarismReport from successful response
-  return responseData.data;
 }
-
