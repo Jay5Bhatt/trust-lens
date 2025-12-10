@@ -13,7 +13,7 @@ import type {
 
 const CHUNK_SIZE = 1500; // Characters per chunk
 const CHUNK_OVERLAP = 200; // Overlap between chunks
-const MAX_CONCURRENT_CHUNKS = 5; // Process max 5 chunks in parallel (increased for speed)
+const MAX_CONCURRENT_CHUNKS = 3; // Process max 3 chunks in parallel (reduced from 5 to save memory)
 const RATE_LIMIT_DELAY_MS = 100; // Delay between chunk processing (reduced for speed)
 const MAX_CHUNKS_TO_PROCESS = 4; // Limit chunks to stay within 8s timeout (free tier limit)
 

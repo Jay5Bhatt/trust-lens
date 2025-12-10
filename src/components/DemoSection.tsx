@@ -4,7 +4,7 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import { Zap, Image, FileText } from "lucide-react";
 import { UploadArea } from "./demo/UploadArea";
-import { TextUploadArea } from "./demo/TextUploadArea";
+import { TextUploadArea, SAMPLE_PLAGIARISM_TEXT } from "./demo/TextUploadArea";
 import { AnalysisAnimation } from "./demo/AnalysisAnimation";
 import { ResultsDashboard } from "./demo/ResultsDashboard";
 import { PlagiarismResults } from "./demo/PlagiarismResults";
@@ -19,6 +19,57 @@ import type { PlagiarismReport } from "@/lib/types/plagiarism";
 
 type DemoState = "idle" | "analyzing" | "results" | "error";
 type TabValue = "image" | "text";
+
+/**
+ * Generate mock plagiarism report for example text demo
+ */
+function getMockPlagiarismReport(text: string): PlagiarismReport {
+  return {
+    normalizedTextLength: text.length,
+    plagiarismPercentage: 38.5,
+    riskLevel: "medium",
+    suspiciousSegments: [
+      {
+        startIndex: 0,
+        endIndex: 150,
+        textPreview: "Climate change is one of the most debated topics of this century. Many articles...",
+        similarityScore: 0.72,
+        sources: [
+          {
+            url: "https://www.example.com/climate-change-overview",
+            title: "Climate Change Overview - Environmental Science",
+            snippet: "Climate change is one of the most debated topics of this century. Many articles online repeat the same facts, statistics, and phrases...",
+            similarityScore: 0.72,
+          },
+          {
+            url: "https://www.example.org/climate-articles",
+            title: "Common Climate Change Phrases and Statistics",
+            snippet: "Many articles online repeat the same facts, statistics, and phrases without adding any new perspective.",
+            similarityScore: 0.68,
+          },
+        ],
+      },
+      {
+        startIndex: 151,
+        endIndex: 300,
+        textPreview: "In this short passage, the first paragraph imitates a very generic, overused style...",
+        similarityScore: 0.65,
+        sources: [
+          {
+            url: "https://www.example.net/writing-styles",
+            title: "Generic Writing Styles in Online Content",
+            snippet: "The first paragraph imitates a very generic, overused style you can find on thousands of websites.",
+            similarityScore: 0.65,
+          },
+        ],
+      },
+    ],
+    aiGeneratedLikelihood: 0.62,
+    aiVerdict: "likely_ai",
+    explanation: "Found 2 suspicious segments with 38.5% of the text potentially plagiarized. AI-generated text detection indicates this text is likely AI-generated (62% confidence). Overall risk level: MEDIUM.",
+    analysisStatus: "success",
+  };
+}
 
 export function DemoSection() {
   const ref = useRef(null);
@@ -141,6 +192,23 @@ export function DemoSection() {
     textAnalysisReadyRef.current = false;
 
     try {
+      // Check if this is the example text - if so, return mock result with fake processing
+      const normalizedText = text.trim();
+      const normalizedExample = SAMPLE_PLAGIARISM_TEXT.trim();
+      
+      if (normalizedText === normalizedExample) {
+        // This is example text - show fake processing (3-5 seconds) then return mock result
+        const processingDelay = 3000 + Math.random() * 2000; // 3-5 seconds
+        await new Promise((resolve) => setTimeout(resolve, processingDelay));
+        
+        const mockResult = getMockPlagiarismReport(text);
+        setTextResult(mockResult);
+        setTextState("results");
+        textAnalysisReadyRef.current = true;
+        return;
+      }
+
+      // Real API call for non-example text
       const result = await checkPlagiarismAPI({ text });
       setTextResult(result);
       setTextState("results");

@@ -3,7 +3,7 @@ import { Upload, FileText, Type, ArrowRight } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "../ui/button";
 
-const SAMPLE_PLAGIARISM_TEXT = `
+export const SAMPLE_PLAGIARISM_TEXT = `
 Climate change is one of the most debated topics of this century. Many articles online repeat the same facts, statistics, and phrases without adding any new perspective.
 
 In this short passage, the first paragraph imitates a very generic, overused style you can find on thousands of websites. The second paragraph, however, is more personal and reflective, which usually looks more like original writing.

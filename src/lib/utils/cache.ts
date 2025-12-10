@@ -77,7 +77,7 @@ async function initializeCache(): Promise<void> {
     // Fallback to LRU cache (always succeeds)
     try {
       lruCache = new LRUCache<string, any>({
-        max: 500, // Maximum number of items
+        max: 100, // Maximum number of items (reduced from 500 to save memory)
         ttl: 1000 * 60 * 60 * 24, // 24 hours TTL
       });
       console.log("Cache: Using in-memory LRU cache");
