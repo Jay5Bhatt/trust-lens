@@ -1,31 +1,44 @@
 import { LRUCache } from "lru-cache";
-import Redis from "ioredis";
 import type { Redis as RedisType } from "ioredis";
 
 let redisClient: RedisType | null = null;
 let lruCache: LRUCache<string, any> | null = null;
 let cacheInitialized = false;
+let cacheInitializing: Promise<void> | null = null;
 
 /**
  * Initialize cache - use Redis if REDIS_URL is provided, otherwise use LRU cache
  * Lazy-loaded to prevent import-time errors
  */
-function initializeCache() {
+async function initializeCache() {
   if (cacheInitialized) {
     return;
   }
 
+  // If already initializing, wait for it
+  if (cacheInitializing) {
+    await cacheInitializing;
+    return;
+  }
+
+  // Start initialization
+  cacheInitializing = (async () => {
+
   if (process.env.REDIS_URL) {
     try {
+      // Use dynamic import to avoid ESM import issues
+      const RedisModule = await import("ioredis");
+      const Redis = RedisModule.default || RedisModule;
       redisClient = new Redis(process.env.REDIS_URL, {
         maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
           if (times > 3) return null; // Stop retrying after 3 attempts
           return Math.min(times * 200, 2000);
         },
-      });
+      }) as RedisType;
       console.log("Cache: Using Redis");
       cacheInitialized = true;
+      cacheInitializing = null;
       return;
     } catch (error) {
       console.warn("Cache: Redis initialization failed, falling back to LRU cache", error);
@@ -39,13 +52,17 @@ function initializeCache() {
   });
   console.log("Cache: Using in-memory LRU cache");
   cacheInitialized = true;
+  cacheInitializing = null;
+  })();
+
+  await cacheInitializing;
 }
 
 /**
  * Get value from cache
  */
 export async function getCache(key: string): Promise<any | null> {
-  initializeCache(); // Lazy initialization
+  await initializeCache(); // Lazy initialization
   
   if (redisClient) {
     try {
@@ -68,7 +85,7 @@ export async function getCache(key: string): Promise<any | null> {
  * Set value in cache
  */
 export async function setCache(key: string, value: any, ttlSeconds?: number): Promise<void> {
-  initializeCache(); // Lazy initialization
+  await initializeCache(); // Lazy initialization
   
   if (redisClient) {
     try {
@@ -95,7 +112,7 @@ export async function setCache(key: string, value: any, ttlSeconds?: number): Pr
  * Delete value from cache
  */
 export async function deleteCache(key: string): Promise<void> {
-  initializeCache(); // Lazy initialization
+  await initializeCache(); // Lazy initialization
   
   if (redisClient) {
     try {

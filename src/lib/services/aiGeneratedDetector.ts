@@ -115,7 +115,7 @@ ${textToAnalyze}`;
         console.warn("Failed to parse AI detection result from Gemini response");
         return {
           likelihood: 0.5,
-          verdict: "uncertain",
+          verdict: "uncertain" as AIVerdict,
         };
       },
       3, // maxRetries
@@ -150,7 +150,7 @@ ${textToAnalyze}`;
     console.error("Error in AI detection:", error);
     return {
       likelihood: 0.5,
-      verdict: "uncertain",
+      verdict: "uncertain" as AIVerdict,
     };
   }
 }
