@@ -28,7 +28,8 @@ async function initializeCache() {
     try {
       // Use dynamic import to avoid ESM import issues
       const RedisModule = await import("ioredis");
-      const Redis = RedisModule.default || RedisModule;
+      // Explicitly type assert as constructor function
+      const Redis = (RedisModule.default || RedisModule) as new (url: string, options?: any) => RedisType;
       redisClient = new Redis(process.env.REDIS_URL, {
         maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
