@@ -21,37 +21,9 @@ const MAX_REQUEST_SIZE_BYTES = 10 * 1024 * 1024;
 // Maximum text length to process (100k chars to stay within timeout)
 const MAX_TEXT_LENGTH = 100_000;
 
-// Track handler state for unhandled rejection handler
-let currentHandlerState: {
-  res?: VercelResponse;
-  responseSent?: boolean;
-  correlationId?: string;
-} | null = null;
-
-// Handle unhandled promise rejections
-if (typeof process !== "undefined") {
-  process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
-    console.error("[check-plagiarism] Unhandled promise rejection", {
-      reason: reason?.message || String(reason),
-      stack: reason?.stack,
-      correlationId: currentHandlerState?.correlationId,
-    });
-    
-    // Try to send error response if handler is still active
-    if (currentHandlerState?.res && !currentHandlerState?.responseSent) {
-      try {
-        currentHandlerState.responseSent = true;
-        currentHandlerState.res.status(200).json({
-          success: false,
-          errorType: "analysis_error",
-          message: "An unexpected error occurred during processing. Please try again.",
-        });
-      } catch (err) {
-        console.error("[check-plagiarism] Failed to send error response for unhandled rejection", err);
-      }
-    }
-  });
-}
+// Note: We don't use process.on('unhandledRejection') in Vercel serverless
+// as it can interfere with Vercel's own error handling. All errors are caught
+// within the handler's try-catch blocks.
 
 /**
  * Helper to ensure CORS headers are always set
@@ -139,13 +111,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   };
 
   const correlationId = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
-  
-  // Set handler state for unhandled rejection handler
-  currentHandlerState = {
-    res,
-    responseSent: false,
-    correlationId,
-  };
   
   console.log("[check-plagiarism] start", {
     correlationId,
@@ -386,8 +351,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: err?.message || "Unexpected server error. Please try again.",
     });
   } finally {
-    // Clear handler state
-    currentHandlerState = null;
     const totalElapsed = Date.now() - startTime;
     console.log("[check-plagiarism] handler completed", {
       correlationId,
