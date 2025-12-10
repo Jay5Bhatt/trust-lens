@@ -52,6 +52,12 @@ export async function extractTextWithGemini(
   // Retry with exponential backoff (500ms, 1500ms, 4500ms)
   return retryWithBackoff(
     async () => {
+      console.log("[geminiTextExtractor] Starting extraction", {
+        fileName: safeFileName,
+        mimeType,
+        fileSize: fileBuffer.length,
+      });
+
       const result = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: [
@@ -64,19 +70,45 @@ export async function extractTextWithGemini(
                   data: base64Data,
                   mimeType,
                 },
-                name: safeFileName,
-              } as any, // Type assertion needed for inlineData with name
+              },
             ],
           },
         ],
       });
 
-      const text =
-        result.candidates?.[0]?.content?.parts?.[0]?.text ||
-        "";
+      console.log("[geminiTextExtractor] Received response", {
+        hasCandidates: !!result.candidates,
+        candidatesLength: result.candidates?.length || 0,
+      });
+
+      // Extract text from response - check all parts
+      let text = "";
+      if (result?.candidates && result.candidates.length > 0) {
+        const candidate = result.candidates[0];
+        if (candidate.content?.parts) {
+          for (const part of candidate.content.parts) {
+            if ((part as any).text) {
+              text += (part as any).text;
+            }
+          }
+        }
+      }
+
+      // Fallback: try direct access
+      if (!text) {
+        text = (result as any).candidates?.[0]?.content?.parts?.[0]?.text || "";
+      }
+
+      console.log("[geminiTextExtractor] Extracted text length", {
+        textLength: text.length,
+        preview: text.slice(0, 100),
+      });
 
       if (!text || text.trim().length < 10) {
-        throw new Error("Gemini returned empty or invalid text extraction");
+        const errorDetails = JSON.stringify(result, null, 2).slice(0, 500);
+        throw new Error(
+          `Gemini returned empty or invalid text extraction. Response: ${errorDetails}`
+        );
       }
 
       return text.trim();
@@ -86,6 +118,10 @@ export async function extractTextWithGemini(
     4500 // maxDelay
   ).catch((error) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[geminiTextExtractor] Extraction failed", {
+      fileName: safeFileName,
+      error: errorMessage,
+    });
     throw new Error(`EXTRACTION_ERROR: Text extraction failed: ${errorMessage}`);
   });
 }

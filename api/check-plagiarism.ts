@@ -275,6 +275,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const pipelineStartTime = Date.now();
     let result: PipelineResult;
     try {
+      console.log("[check-plagiarism] starting pipeline", {
+        correlationId,
+        hasText: !!body.text,
+        hasFileBuffer: !!buffer,
+        fileName: body.fileName,
+        fileSize: buffer?.length,
+      });
+
       result = await withTimeout(
         pipeline({
           text: body.text,
@@ -290,6 +298,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         correlationId,
         elapsed: `${pipelineElapsed}ms`,
         ok: result.ok,
+        errorType: result.errorType,
+        message: result.message?.slice(0, 100),
+        hasReport: !!result.report,
       });
     } catch (pipelineRunError) {
       console.error("[check-plagiarism] pipeline execution error", {

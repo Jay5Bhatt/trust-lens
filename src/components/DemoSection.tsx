@@ -164,18 +164,41 @@ export function DemoSection() {
     setTextResult(null);
     textAnalysisReadyRef.current = false;
 
+    console.log("[DemoSection] Starting file upload", {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+    });
+
     try {
       const result = await checkPlagiarismAPI({
         fileBuffer: file,
         fileName: file.name,
       });
+      
+      console.log("[DemoSection] Received result", {
+        hasResult: !!result,
+        plagiarismPercentage: result?.plagiarismPercentage,
+        riskLevel: result?.riskLevel,
+      });
+
+      if (!result) {
+        throw new Error("Server returned empty result");
+      }
+
       setTextResult(result);
       setTextState("results");
       textAnalysisReadyRef.current = true;
     } catch (error) {
-      console.error("Plagiarism check error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      const errorType = (error as any)?.errorType;
+      console.error("[DemoSection] Plagiarism check error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const errorType = (error as any)?.errorType || "analysis_error";
+      
+      console.log("[DemoSection] Setting error state", {
+        errorMessage,
+        errorType,
+      });
+
       setTextError({ message: errorMessage, errorType });
       setTextState("error");
       textAnalysisReadyRef.current = true;

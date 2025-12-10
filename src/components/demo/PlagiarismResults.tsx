@@ -205,7 +205,33 @@ export function PlagiarismResults({ result, error, onReset }: PlagiarismResultsP
 
   // Normal result display (error is null)
   if (!result) {
-    return null; // Should not happen, but handle gracefully
+    // If we're supposed to show results but result is null, show an error instead
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="space-y-6"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-2xl font-bold">Analysis Error</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onReset}
+            className="gap-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Try Again
+          </Button>
+        </div>
+        <div className="glass-card rounded-3xl p-6 md:p-8">
+          <p className="text-muted-foreground">
+            No results were returned from the analysis. Please try again or contact support if the issue persists.
+          </p>
+        </div>
+      </motion.div>
+    );
   }
 
   const riskColor = getRiskColor(result.riskLevel);
