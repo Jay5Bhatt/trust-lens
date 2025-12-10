@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { withTimeout } from "../src/lib/utils/timeout.js";
 
 // Use a lazy dynamic import so that import-time errors can be caught
 type PipelineResult = {
@@ -67,6 +68,24 @@ async function getPipeline(): Promise<(input: any) => Promise<PipelineResult>> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Ensure response is always sent, even if handler crashes
+  let responseSent = false;
+  
+  const safeSendResponse = (data: { success: boolean; errorType?: string; message?: string; data?: any }) => {
+    if (responseSent) return;
+    responseSent = true;
+    try {
+      sendJSONResponse(res, data);
+    } catch (err) {
+      // Last resort - try to send raw JSON
+      try {
+        res.status(200).json(data);
+      } catch (finalErr) {
+        console.error("[check-plagiarism] Failed to send response completely", finalErr);
+      }
+    }
+  };
+
   const correlationId = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
   console.log("[check-plagiarism] start", { correlationId, method: req.method });
 
@@ -76,12 +95,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     setCORSHeaders(res);
 
     if (req.method === "OPTIONS") {
+      responseSent = true;
       res.status(200).end();
       return;
     }
 
     if (req.method !== "POST") {
-      sendJSONResponse(res, {
+      safeSendResponse({
         success: false,
         errorType: "bad_request",
         message: "Only POST is allowed for this endpoint.",
@@ -95,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
     } catch (parseError) {
       console.error("[check-plagiarism] body parse error", { correlationId, error: parseError });
-      sendJSONResponse(res, {
+      safeSendResponse({
         success: false,
         errorType: "bad_request",
         message: "Invalid JSON in request body.",
@@ -116,7 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           correlationId,
           error: bufferError,
         });
-        sendJSONResponse(res, {
+        safeSendResponse({
           success: false,
           errorType: "bad_request",
           message: `Invalid fileBuffer format: ${bufferError instanceof Error ? bufferError.message : String(bufferError)}`,
@@ -134,7 +154,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         correlationId,
         error: pipelineError,
       });
-      sendJSONResponse(res, {
+      safeSendResponse({
         success: false,
         errorType: "analysis_error",
         message: "Failed to initialize plagiarism pipeline.",
@@ -142,26 +162,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    // Run pipeline
+    // Run pipeline with timeout protection (45 seconds max)
+    const REQUEST_TIMEOUT_MS = 45 * 1000;
     let result: PipelineResult;
     try {
-      result = await pipeline({
-        text: body.text,
-        fileBuffer: buffer,
-        fileName: body.fileName,
-      });
+      result = await withTimeout(
+        pipeline({
+          text: body.text,
+          fileBuffer: buffer,
+          fileName: body.fileName,
+        }),
+        REQUEST_TIMEOUT_MS,
+        "Analysis timed out. Please try again with a smaller document or shorter text."
+      );
     } catch (pipelineRunError) {
       console.error("[check-plagiarism] pipeline execution error", {
         correlationId,
         error: pipelineRunError,
       });
-      sendJSONResponse(res, {
+      
+      const errorMessage = pipelineRunError instanceof Error 
+        ? pipelineRunError.message 
+        : "Pipeline execution failed.";
+      
+      // Check if it's a timeout error
+      const isTimeout = errorMessage.includes("timed out") || errorMessage.includes("timeout");
+      
+      safeSendResponse({
         success: false,
         errorType: "analysis_error",
-        message:
-          pipelineRunError instanceof Error
-            ? pipelineRunError.message
-            : "Pipeline execution failed.",
+        message: isTimeout 
+          ? "Analysis timed out. Please try again with a smaller document or shorter text."
+          : errorMessage,
       });
       return;
     }
@@ -173,7 +205,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!result.ok) {
-      sendJSONResponse(res, {
+      safeSendResponse({
         success: false,
         errorType: result.errorType || "analysis_error",
         message: result.message || "Analysis failed due to an unknown error.",
@@ -181,7 +213,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    sendJSONResponse(res, {
+    safeSendResponse({
       success: true,
       data: result.report,
     });
@@ -195,7 +227,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // IMPORTANT: still 200, never 500
-    sendJSONResponse(res, {
+    safeSendResponse({
       success: false,
       errorType: "analysis_error",
       message: err?.message || "Unexpected server error. Please try again.",
