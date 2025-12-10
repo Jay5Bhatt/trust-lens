@@ -9,6 +9,50 @@ type PipelineResult = {
   message?: string;
 };
 
+// Vercel timeout limits:
+// Hobby plan: 10 seconds
+// Pro plan: 60 seconds
+// Use 8 seconds to leave buffer for response sending
+const REQUEST_TIMEOUT_MS = 8 * 1000;
+
+// Maximum request body size (10MB)
+const MAX_REQUEST_SIZE_BYTES = 10 * 1024 * 1024;
+
+// Maximum text length to process (100k chars to stay within timeout)
+const MAX_TEXT_LENGTH = 100_000;
+
+// Track handler state for unhandled rejection handler
+let currentHandlerState: {
+  res?: VercelResponse;
+  responseSent?: boolean;
+  correlationId?: string;
+} | null = null;
+
+// Handle unhandled promise rejections
+if (typeof process !== "undefined") {
+  process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
+    console.error("[check-plagiarism] Unhandled promise rejection", {
+      reason: reason?.message || String(reason),
+      stack: reason?.stack,
+      correlationId: currentHandlerState?.correlationId,
+    });
+    
+    // Try to send error response if handler is still active
+    if (currentHandlerState?.res && !currentHandlerState?.responseSent) {
+      try {
+        currentHandlerState.responseSent = true;
+        currentHandlerState.res.status(200).json({
+          success: false,
+          errorType: "analysis_error",
+          message: "An unexpected error occurred during processing. Please try again.",
+        });
+      } catch (err) {
+        console.error("[check-plagiarism] Failed to send error response for unhandled rejection", err);
+      }
+    }
+  });
+}
+
 /**
  * Helper to ensure CORS headers are always set
  */
@@ -68,12 +112,20 @@ async function getPipeline(): Promise<(input: any) => Promise<PipelineResult>> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const startTime = Date.now();
+  
   // Ensure response is always sent, even if handler crashes
   let responseSent = false;
   
   const safeSendResponse = (data: { success: boolean; errorType?: string; message?: string; data?: any }) => {
     if (responseSent) return;
     responseSent = true;
+    const elapsed = Date.now() - startTime;
+    console.log("[check-plagiarism] sending response", {
+      correlationId,
+      elapsed: `${elapsed}ms`,
+      success: data.success,
+    });
     try {
       sendJSONResponse(res, data);
     } catch (err) {
@@ -87,10 +139,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   };
 
   const correlationId = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
-  console.log("[check-plagiarism] start", { correlationId, method: req.method });
+  
+  // Set handler state for unhandled rejection handler
+  currentHandlerState = {
+    res,
+    responseSent: false,
+    correlationId,
+  };
+  
+  console.log("[check-plagiarism] start", {
+    correlationId,
+    method: req.method,
+    timestamp: new Date().toISOString(),
+  });
 
   // Wrap everything in try-catch to ensure we always return JSON
   try {
+    // Check request size early
+    const contentLength = req.headers["content-length"];
+    if (contentLength && parseInt(contentLength, 10) > MAX_REQUEST_SIZE_BYTES) {
+      console.warn("[check-plagiarism] request too large", {
+        correlationId,
+        size: contentLength,
+        max: MAX_REQUEST_SIZE_BYTES,
+      });
+      safeSendResponse({
+        success: false,
+        errorType: "bad_request",
+        message: `Request too large. Maximum size is ${MAX_REQUEST_SIZE_BYTES / 1024 / 1024}MB.`,
+      });
+      return;
+    }
+
     // Set CORS headers early
     setCORSHeaders(res);
 
@@ -112,6 +192,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Parse body safely
     let body: any;
     try {
+      const bodyString = typeof req.body === "string" ? req.body : JSON.stringify(req.body || {});
+      
+      // Check body size after stringification
+      if (bodyString.length > MAX_REQUEST_SIZE_BYTES) {
+        console.warn("[check-plagiarism] body too large after parsing", {
+          correlationId,
+          size: bodyString.length,
+          max: MAX_REQUEST_SIZE_BYTES,
+        });
+        safeSendResponse({
+          success: false,
+          errorType: "bad_request",
+          message: `Request body too large. Maximum size is ${MAX_REQUEST_SIZE_BYTES / 1024 / 1024}MB.`,
+        });
+        return;
+      }
+      
       body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
     } catch (parseError) {
       console.error("[check-plagiarism] body parse error", { correlationId, error: parseError });
@@ -123,6 +220,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
+    // Validate text length early
+    if (body.text && typeof body.text === "string" && body.text.length > MAX_TEXT_LENGTH) {
+      console.warn("[check-plagiarism] text too long", {
+        correlationId,
+        length: body.text.length,
+        max: MAX_TEXT_LENGTH,
+      });
+      safeSendResponse({
+        success: false,
+        errorType: "bad_request",
+        message: `Text is too long. Maximum length is ${MAX_TEXT_LENGTH.toLocaleString()} characters. Please split your text into smaller chunks.`,
+      });
+      return;
+    }
+
     // Convert fileBuffer from base64 to Buffer if provided
     let buffer: Buffer | undefined;
     if (body.fileBuffer) {
@@ -130,7 +242,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const base64Data = body.fileBuffer.includes(",")
           ? body.fileBuffer.split(",")[1]
           : body.fileBuffer;
+        
+        // Estimate buffer size (base64 is ~4/3 of original size)
+        const estimatedSize = (base64Data.length * 3) / 4;
+        if (estimatedSize > MAX_REQUEST_SIZE_BYTES) {
+          console.warn("[check-plagiarism] file too large", {
+            correlationId,
+            estimatedSize,
+            max: MAX_REQUEST_SIZE_BYTES,
+          });
+          safeSendResponse({
+            success: false,
+            errorType: "bad_request",
+            message: `File is too large. Maximum size is ${MAX_REQUEST_SIZE_BYTES / 1024 / 1024}MB.`,
+          });
+          return;
+        }
+        
         buffer = Buffer.from(base64Data, "base64");
+        
+        // Verify actual buffer size
+        if (buffer.length > MAX_REQUEST_SIZE_BYTES) {
+          console.warn("[check-plagiarism] buffer too large after conversion", {
+            correlationId,
+            size: buffer.length,
+            max: MAX_REQUEST_SIZE_BYTES,
+          });
+          safeSendResponse({
+            success: false,
+            errorType: "bad_request",
+            message: `File is too large. Maximum size is ${MAX_REQUEST_SIZE_BYTES / 1024 / 1024}MB.`,
+          });
+          return;
+        }
       } catch (bufferError) {
         console.error("[check-plagiarism] buffer conversion error", {
           correlationId,
@@ -162,8 +306,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    // Run pipeline with timeout protection (45 seconds max)
-    const REQUEST_TIMEOUT_MS = 45 * 1000;
+    // Run pipeline with timeout protection (8 seconds max for Vercel Hobby plan)
+    const pipelineStartTime = Date.now();
     let result: PipelineResult;
     try {
       result = await withTimeout(
@@ -175,6 +319,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         REQUEST_TIMEOUT_MS,
         "Analysis timed out. Please try again with a smaller document or shorter text."
       );
+      
+      const pipelineElapsed = Date.now() - pipelineStartTime;
+      console.log("[check-plagiarism] pipeline completed", {
+        correlationId,
+        elapsed: `${pipelineElapsed}ms`,
+        ok: result.ok,
+      });
     } catch (pipelineRunError) {
       console.error("[check-plagiarism] pipeline execution error", {
         correlationId,
@@ -219,8 +370,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err: any) {
     // Catch-all for any unexpected errors
+    const elapsed = Date.now() - startTime;
     console.error("[check-plagiarism] fatal error", {
       correlationId,
+      elapsed: `${elapsed}ms`,
       name: err?.name,
       message: err?.message,
       stack: err?.stack,
@@ -231,6 +384,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: false,
       errorType: "analysis_error",
       message: err?.message || "Unexpected server error. Please try again.",
+    });
+  } finally {
+    // Clear handler state
+    currentHandlerState = null;
+    const totalElapsed = Date.now() - startTime;
+    console.log("[check-plagiarism] handler completed", {
+      correlationId,
+      totalElapsed: `${totalElapsed}ms`,
     });
   }
 }
