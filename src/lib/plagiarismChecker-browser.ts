@@ -26,33 +26,76 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * Robust API call that always reads JSON and never throws on !response.ok
+ * Completely bulletproof API call that:
+ * - Never throws based on HTTP status code
+ * - Always attempts to read JSON regardless of status
+ * - Shows backend error message if available
+ * - Handles network errors separately
  */
 async function callCheckPlagiarism(payload: any): Promise<PlagiarismAPIResponse> {
-  const response = await fetch("/api/check-plagiarism", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  let response: Response;
 
+  // Handle network errors (fetch failed, CORS, etc.)
+  try {
+    response = await fetch("/api/check-plagiarism", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (networkError) {
+    // Network error - fetch itself failed
+    const errorMessage =
+      networkError instanceof Error
+        ? networkError.message
+        : "Network error occurred";
+    throw new Error(`Network error: ${errorMessage}. Please check your connection and try again.`);
+  }
+
+  // At this point we have a response, regardless of status code
+  // Always attempt to read JSON - backend should always return JSON
   let json: any = null;
+  let jsonError: Error | null = null;
 
   try {
-    json = await response.json();
-  } catch (err) {
-    // If server returns non-JSON, fall back to text
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `Server returned invalid JSON (status ${response.status}): ${text || "no body"}`
+    // Try to read as JSON first
+    const text = await response.text();
+    if (text) {
+      try {
+        json = JSON.parse(text);
+      } catch (parseError) {
+        // Text exists but isn't valid JSON
+        jsonError = new Error(
+          `Server returned invalid JSON (status ${response.status}): ${text.slice(0, 200)}`
+        );
+      }
+    } else {
+      // Empty response body
+      jsonError = new Error(`Server returned empty response (status ${response.status})`);
+    }
+  } catch (readError) {
+    // Failed to read response body at all
+    jsonError = new Error(
+      `Failed to read server response (status ${response.status}): ${
+        readError instanceof Error ? readError.message : String(readError)
+      }`
     );
   }
 
-  // At this point we ALWAYS have a JSON object.
-  // The backend uses { success: true/false, ... }.
-  if (!json || typeof json !== "object") {
-    throw new Error("Unexpected response format from server.");
+  // If we couldn't parse JSON, throw with helpful message
+  if (jsonError) {
+    throw jsonError;
   }
 
+  // At this point we have JSON, regardless of HTTP status code
+  // Backend should always return { success: true/false, ... }
+  if (!json || typeof json !== "object") {
+    throw new Error(
+      `Unexpected response format from server (status ${response.status}). Expected JSON object.`
+    );
+  }
+
+  // If backend returned an error structure, we'll handle it in the caller
+  // Don't throw here - let the caller check json.success
   return json;
 }
 
@@ -77,6 +120,7 @@ export async function checkPlagiarismAPI(
   }
 
   try {
+    // Call API - this never throws on status codes, only on network/parse errors
     const json = await callCheckPlagiarism(body);
 
     // Check success flag - backend always returns JSON with success field
@@ -87,14 +131,20 @@ export async function checkPlagiarismAPI(
       return json.data;
     } else {
       // Backend returned error in structured format
-      const errorMessage = json.message || "Analysis failed.";
+      // Extract message and errorType
+      const errorMessage =
+        json.message || json.error || "Analysis failed. Please try again.";
+      const errorType = json.errorType || "analysis_error";
+
+      // Create error with backend message
       const error = new Error(errorMessage);
       // Attach errorType to error object for frontend use
-      (error as any).errorType = json.errorType;
+      (error as any).errorType = errorType;
       throw error;
     }
   } catch (error) {
-    // Re-throw network errors and other exceptions
+    // Re-throw all errors (network, parse, or backend errors)
+    // The frontend component will catch and display them
     if (error instanceof Error) {
       throw error;
     }
