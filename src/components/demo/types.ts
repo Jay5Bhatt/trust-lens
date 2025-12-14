@@ -37,8 +37,8 @@ export type AnalysisResult = {
 
 // Import example images
 import fakeUpiImage from "../../assets/examples/fake-upi.png";
-import fakeWhatsappImage from "../../assets/examples/fake-whatsapp.svg";
-import aiGeneratedImage from "../../assets/examples/ai-generated.svg";
+import fakeWhatsappImage from "../../assets/examples/fake-whatsapp.png";
+import aiGeneratedImage from "../../assets/examples/ai-generated.jpeg";
 
 export const exampleResults: Record<string, AnalysisResult> = {
   "fake-upi": {
@@ -137,23 +137,28 @@ export const exampleResults: Record<string, AnalysisResult> = {
     exampleImage: aiGeneratedImage,
     anomalies: [
       {
-        title: "Diffusion Artifacts Detected",
-        description: "Pattern consistent with AI generation models",
-        severity: "Critical"
-      },
-      {
-        title: "No Camera Metadata",
-        description: "Missing EXIF data that real photos contain",
-        severity: "Critical"
-      },
-      {
-        title: "Synthetic Texture Patterns",
-        description: "Pixel patterns match AI-generated characteristics",
+        title: "Over-Smooth Skin Texture",
+        description: "Slightly over-smooth skin texture indicating AI processing",
         severity: "High"
       },
       {
-        title: "Impossible Lighting",
-        description: "Light sources don't follow physical laws",
+        title: "Symmetrical Facial Features",
+        description: "Very symmetrical facial features beyond natural variation",
+        severity: "High"
+      },
+      {
+        title: "Hair Strand Inconsistencies",
+        description: "Minor inconsistencies in hair strands near the ears",
+        severity: "Medium"
+      },
+      {
+        title: "Unnatural Eye Reflections",
+        description: "Unnatural eye reflections that don't match the lighting",
+        severity: "High"
+      },
+      {
+        title: "Background Separation",
+        description: "Soft but slightly blurred background separation",
         severity: "Medium"
       }
     ],
