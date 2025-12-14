@@ -36,7 +36,7 @@ export type AnalysisResult = {
 };
 
 // Import example images
-import fakeUpiImage from "../../assets/examples/fake-upi.svg";
+import fakeUpiImage from "../../assets/examples/fake-upi.png";
 import fakeWhatsappImage from "../../assets/examples/fake-whatsapp.svg";
 import aiGeneratedImage from "../../assets/examples/ai-generated.svg";
 
