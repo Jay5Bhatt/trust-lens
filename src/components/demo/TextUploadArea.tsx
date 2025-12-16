@@ -17,6 +17,7 @@ type TextUploadAreaProps = {
   isDragging: boolean;
   setIsDragging: (value: boolean) => void;
   disabled: boolean;
+  onFileSizeError?: (message: string) => void;
 };
 
 export function TextUploadArea({
@@ -25,6 +26,7 @@ export function TextUploadArea({
   isDragging,
   setIsDragging,
   disabled,
+  onFileSizeError,
 }: TextUploadAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -64,6 +66,7 @@ export function TextUploadArea({
 
   const validateFile = (file: File): boolean => {
     const maxSize = 10 * 1024 * 1024; // 10MB
+    const largeFileThreshold = 300 * 1024; // 300KB
     const validTypes = [
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // DOCX
@@ -78,6 +81,20 @@ export function TextUploadArea({
       alert("Invalid file type. Supported: PDF, DOCX, TXT");
       return false;
     }
+
+    // Check if file is PDF/DOCX and larger than 300KB - suggest using text input instead
+    const isPdfOrDocx = file.type === "application/pdf" || 
+                        file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (isPdfOrDocx && file.size > largeFileThreshold) {
+      const message = "Large documents are analyzed asynchronously. For live verification, paste text or use demo examples.";
+      if (onFileSizeError) {
+        onFileSizeError(message);
+      } else {
+        alert(message);
+      }
+      return false;
+    }
+
     return true;
   };
 

@@ -131,15 +131,17 @@ export async function checkPlagiarismAPI(
       return json.data;
     } else {
       // Backend returned error in structured format
-      // Extract message and errorType
+      // Extract message, userMessage, and errorType
       const errorMessage =
         json.message || json.error || "Analysis failed. Please try again.";
+      const userMessage = json.userMessage || errorMessage;
       const errorType = json.errorType || "analysis_error";
 
-      // Create error with backend message
-      const error = new Error(errorMessage);
-      // Attach errorType to error object for frontend use
+      // Create error with user-friendly message (prefer userMessage over message)
+      const error = new Error(userMessage);
+      // Attach errorType and original message to error object for frontend use
       (error as any).errorType = errorType;
+      (error as any).originalMessage = errorMessage;
       throw error;
     }
   } catch (error) {

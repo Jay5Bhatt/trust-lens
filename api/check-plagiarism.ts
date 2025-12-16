@@ -45,7 +45,7 @@ function setCORSHeaders(res: VercelResponse): void {
  */
 function sendJSONResponse(
   res: VercelResponse,
-  data: { success: boolean; errorType?: string; message?: string; data?: any }
+  data: { success: boolean; errorType?: string; message?: string; userMessage?: string; data?: any }
 ): void {
   try {
     setCORSHeaders(res);
@@ -89,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Ensure response is always sent, even if handler crashes
   let responseSent = false;
   
-  const safeSendResponse = (data: { success: boolean; errorType?: string; message?: string; data?: any }) => {
+  const safeSendResponse = (data: { success: boolean; errorType?: string; message?: string; userMessage?: string; data?: any }) => {
     if (responseSent) return;
     responseSent = true;
     const elapsed = Date.now() - startTime;
@@ -132,6 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: false,
         errorType: "bad_request",
         message: `Request too large. Maximum size is ${MAX_REQUEST_SIZE_BYTES / 1024 / 1024}MB.`,
+        userMessage: "File is too large. Please use a smaller file (max 10MB) or paste the text directly.",
       });
       return;
     }
@@ -150,6 +151,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: false,
         errorType: "bad_request",
         message: "Only POST is allowed for this endpoint.",
+        userMessage: "Invalid request method. Please use the web interface.",
       });
       return;
     }
@@ -170,6 +172,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           success: false,
           errorType: "bad_request",
           message: `Request body too large. Maximum size is ${MAX_REQUEST_SIZE_BYTES / 1024 / 1024}MB.`,
+          userMessage: "Request is too large. Please use a smaller file (max 10MB) or paste the text directly.",
         });
         return;
       }
@@ -181,6 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: false,
         errorType: "bad_request",
         message: "Invalid JSON in request body.",
+        userMessage: "Invalid request format. Please try again or use the web interface.",
       });
       return;
     }
@@ -196,6 +200,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: false,
         errorType: "bad_request",
         message: `Text is too long. Maximum length is ${MAX_TEXT_LENGTH.toLocaleString()} characters. Please split your text into smaller chunks.`,
+        userMessage: "Text is too long. Please split your text into smaller chunks or use the demo examples.",
       });
       return;
     }
@@ -237,6 +242,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             success: false,
             errorType: "bad_request",
             message: `File is too large. Maximum size is ${MAX_REQUEST_SIZE_BYTES / 1024 / 1024}MB.`,
+            userMessage: "File is too large. Please use a smaller file (max 10MB) or paste the text directly.",
           });
           return;
         }
@@ -249,6 +255,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           success: false,
           errorType: "bad_request",
           message: `Invalid fileBuffer format: ${bufferError instanceof Error ? bufferError.message : String(bufferError)}`,
+          userMessage: "Invalid file format. Please upload a valid PDF, DOCX, or TXT file.",
         });
         return;
       }
@@ -270,6 +277,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: false,
         errorType: "analysis_error",
         message: "Failed to initialize plagiarism pipeline. Please try again.",
+        userMessage: "Service initialization failed. Please try again or use the demo examples.",
       });
       return;
     }
@@ -332,12 +340,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Check if it's a timeout error
       const isTimeout = errorMessage.includes("timed out") || errorMessage.includes("timeout");
       
+      const userMessage = isTimeout
+        ? "Analysis timed out. Please try again with a smaller document or shorter text, or paste the text directly for faster results."
+        : errorMessage;
+      
       safeSendResponse({
         success: false,
         errorType: "analysis_error",
         message: isTimeout 
           ? "Analysis timed out. Please try again with a smaller document or shorter text."
           : errorMessage,
+        userMessage: userMessage,
       });
       return;
     }
@@ -349,10 +362,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!result.ok) {
+      const errorType = result.errorType || "analysis_error";
+      const errorMessage = result.message || "Analysis failed due to an unknown error.";
+      
+      // Determine if this is an extraction timeout
+      const isExtractionTimeout = errorType === "extraction_error" && 
+        (errorMessage.includes("timed out") || errorMessage.includes("timeout"));
+      
+      // Set user-friendly message based on error type
+      let userMessage: string;
+      if (isExtractionTimeout) {
+        userMessage = "Large documents take longer to analyze. For instant results, paste text or use demo examples.";
+      } else if (errorType === "extraction_error") {
+        userMessage = "We couldn't read text from this file. Please upload a text-based PDF or paste the text directly.";
+      } else {
+        userMessage = errorMessage; // Use the same message as default
+      }
+      
       safeSendResponse({
         success: false,
-        errorType: result.errorType || "analysis_error",
-        message: result.message || "Analysis failed due to an unknown error.",
+        errorType: isExtractionTimeout ? "extraction_timeout" : errorType,
+        message: errorMessage,
+        userMessage: userMessage,
       });
       return;
     }
@@ -377,6 +408,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: false,
       errorType: "analysis_error",
       message: err?.message || "Unexpected server error. Please try again.",
+      userMessage: "An unexpected error occurred. Please try again or use the demo examples.",
     });
   } finally {
     const totalElapsed = Date.now() - startTime;

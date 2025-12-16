@@ -354,6 +354,30 @@ export function DemoSection() {
     textAnalysisReadyRef.current = false;
   }, []);
 
+  // Callback to try demo example - switches to text input and fills with example text
+  const handleTryDemoExample = useCallback(() => {
+    // Switch to text tab if not already
+    setActiveTab("text");
+    // Reset state
+    setTextState("idle");
+    setTextResult(null);
+    setTextError(null);
+    textAnalysisReadyRef.current = false;
+    // Trigger example text submission after a brief delay to ensure UI is ready
+    setTimeout(() => {
+      handleTextSubmit(SAMPLE_PLAGIARISM_TEXT);
+    }, 100);
+  }, [handleTextSubmit]);
+
+  // Callback to switch to paste text mode
+  const handlePasteTextInstead = useCallback(() => {
+    // Switch to text tab if not already
+    setActiveTab("text");
+    // Reset state to show text input
+    handleTextReset();
+    // Text input will be shown by default in TextUploadArea
+  }, [handleTextReset]);
+
   // Cleanup intervals on unmount
   useEffect(() => {
     return () => {
@@ -453,14 +477,15 @@ export function DemoSection() {
                     isDragging={isTextDragging}
                     setIsDragging={setIsTextDragging}
                     disabled={textState === "analyzing"}
+                    onFileSizeError={handleFileSizeError}
                   />
                 </div>
                 <div className="lg:col-span-3">
                   <AnimatePresence mode="wait">
                     {textState === "idle" && <PlagiarismEmptyState key="empty" />}
                     {textState === "analyzing" && <AnalysisAnimation key="analyzing" onComplete={handleTextAnalysisComplete} />}
-                    {textState === "results" && textResult && <PlagiarismResults key="results" result={textResult} error={null} onReset={handleTextReset} />}
-                    {textState === "error" && <PlagiarismResults key="error" result={null} error={textError} onReset={handleTextReset} />}
+                    {textState === "results" && textResult && <PlagiarismResults key="results" result={textResult} error={null} onReset={handleTextReset} onTryDemoExample={handleTryDemoExample} onPasteTextInstead={handlePasteTextInstead} />}
+                    {textState === "error" && <PlagiarismResults key="error" result={null} error={textError} onReset={handleTextReset} onTryDemoExample={handleTryDemoExample} onPasteTextInstead={handlePasteTextInstead} />}
                   </AnimatePresence>
                 </div>
               </div>

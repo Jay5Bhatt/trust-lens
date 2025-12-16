@@ -8,9 +8,11 @@ type PlagiarismResultsProps = {
   result: PlagiarismReport | null;
   error?: { message: string; errorType?: string } | null;
   onReset: () => void;
+  onTryDemoExample?: () => void;
+  onPasteTextInstead?: () => void;
 };
 
-export function PlagiarismResults({ result, error, onReset }: PlagiarismResultsProps) {
+export function PlagiarismResults({ result, error, onReset, onTryDemoExample, onPasteTextInstead }: PlagiarismResultsProps) {
   const [expandedSegments, setExpandedSegments] = useState<Set<number>>(new Set());
 
   const toggleSegment = (index: number) => {
@@ -90,7 +92,8 @@ export function PlagiarismResults({ result, error, onReset }: PlagiarismResultsP
       glow: "shadow-[0_0_30px_rgba(245,158,11,0.3)]",
     };
 
-    const isExtractionError = error.errorType === "extraction_error";
+    const isExtractionError = error.errorType === "extraction_error" || error.errorType === "extraction_timeout";
+    const isExtractionTimeout = error.errorType === "extraction_timeout";
 
     return (
       <motion.div
@@ -182,12 +185,42 @@ export function PlagiarismResults({ result, error, onReset }: PlagiarismResultsP
           transition={{ duration: 0.5, delay: 0.2 }}
           className="glass-card rounded-3xl p-6 md:p-8"
         >
-          <h4 className="font-bold text-lg mb-4">Analysis Summary</h4>
-          <p className="text-muted-foreground leading-relaxed mb-4">
-            {isExtractionError
-              ? "We couldn't read any text from this file. Please upload a text-based PDF or paste the text directly."
-              : error.message}
-          </p>
+          <div className="flex items-start gap-3 mb-4">
+            <AlertTriangle className={`w-6 h-6 ${errorColor.text} flex-shrink-0 mt-0.5`} />
+            <div className="flex-1">
+              <h4 className="font-bold text-lg mb-2">Analysis Summary</h4>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                {error.message}
+              </p>
+            </div>
+          </div>
+          
+          {/* CTA Buttons for extraction errors */}
+          {(isExtractionError || isExtractionTimeout) && (onTryDemoExample || onPasteTextInstead) && (
+            <div className="flex flex-wrap gap-3 mb-4 pt-4 border-t border-border/50">
+              {onTryDemoExample && (
+                <Button
+                  onClick={onTryDemoExample}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Try Demo Example
+                </Button>
+              )}
+              {onPasteTextInstead && (
+                <Button
+                  onClick={onPasteTextInstead}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Paste Text Instead
+                </Button>
+              )}
+            </div>
+          )}
+          
           <div className="mt-4 pt-4 border-t border-border/50 grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Text Length:</span>
