@@ -142,6 +142,7 @@ export async function checkPlagiarismAPI(
       // Attach errorType and original message to error object for frontend use
       (error as any).errorType = errorType;
       (error as any).originalMessage = errorMessage;
+      (error as any).userMessage = userMessage;
       throw error;
     }
   } catch (error) {

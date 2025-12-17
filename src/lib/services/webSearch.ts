@@ -52,10 +52,10 @@ export async function searchWebForChunk(
         // Soft-fail for common upstream issues (quota, auth, overload)
         if ([401, 403, 429, 503].includes(response.status)) {
           const errorText = await response.text();
-          console.warn(
-            `[webSearch] upstream unavailable (${response.status}): ${errorText?.slice?.(0, 200) || ""}`
-          );
-          return []; // graceful fallback: no web results
+          const trimmed = errorText?.slice?.(0, 200) || "";
+          const warning = `UPSTREAM_WARNING: SerpAPI unavailable (${response.status}): ${trimmed}`;
+          console.warn("[webSearch] upstream unavailable", { status: response.status, body: trimmed });
+          throw new Error(warning);
         }
 
         if (!response.ok) {
@@ -96,6 +96,10 @@ export async function searchWebForChunk(
   } catch (error) {
     // Check if this is a critical error (502, 5xx, network error) - if so, rethrow
     const errorMessage = error instanceof Error ? error.message : String(error);
+    // Non-fatal upstream warning: return empty results but surface warning upstream via errors array
+    if (errorMessage.startsWith("UPSTREAM_WARNING")) {
+      return [];
+    }
     if (
       errorMessage.includes("502") ||
       errorMessage.includes("500") ||

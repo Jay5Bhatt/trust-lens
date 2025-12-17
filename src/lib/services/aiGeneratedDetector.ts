@@ -125,8 +125,19 @@ ${textToAnalyze}`;
 
     return result;
   } catch (error) {
-    // Check if this is a critical API error (502, 5xx, network error)
+    // Handle quota/overload gracefully by degrading to uncertain
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const isQuotaOrOverload =
+      /429|quota|RESOURCE_EXHAUSTED|overload|UNAVAILABLE|503/i.test(errorMessage);
+    if (isQuotaOrOverload) {
+      console.warn("AI detection quota/overload, returning uncertain verdict");
+      return {
+        likelihood: 0.5,
+        verdict: "uncertain" as AIVerdict,
+      };
+    }
+
+    // Check if this is a critical API error (502, 5xx, network error)
     if (
       errorMessage.includes("502") ||
       errorMessage.includes("500") ||

@@ -228,6 +228,7 @@ async function processChunksConcurrently(
 
         // Check if it's a critical error that should stop processing
         const errorMessage = err.message;
+        const isUpstreamWarning = errorMessage.includes("UPSTREAM_WARNING");
         if (
           errorMessage.includes("BAD_REQUEST") ||
           errorMessage.includes("UPSTREAM_ERROR")
@@ -237,7 +238,9 @@ async function processChunksConcurrently(
         }
 
         // Non-critical error - continue but count as unscored
-        unscoredCount++;
+        if (!isUpstreamWarning) {
+          unscoredCount++;
+        }
         return { success: false };
       }
     });
@@ -357,7 +360,10 @@ export async function checkPlagiarism(
     wasLimited,
     totalChunks,
     chunksToProcess.length,
-    upstreamErrors.length > 0
+    upstreamErrors.some((err) =>
+      (err?.message || "").includes("UPSTREAM_WARNING") ||
+      (err?.message || "").includes("UPSTREAM_ERROR")
+    )
   );
 
   // Return structured report
