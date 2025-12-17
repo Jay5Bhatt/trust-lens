@@ -331,8 +331,8 @@ export function DemoSection() {
   }, []);
 
   // Handle oversized/unsupported file errors from TextUploadArea
-  const handleFileSizeError = useCallback((error: { message: string; errorType?: string }) => {
-    setTextError(error);
+  const handleFileSizeError = useCallback((message: string) => {
+    setTextError({ message, errorType: "file_too_large" });
     setTextState("error");
     textAnalysisReadyRef.current = true;
   }, []);
