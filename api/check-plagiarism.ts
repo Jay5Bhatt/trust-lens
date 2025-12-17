@@ -7,6 +7,7 @@ type PipelineResult = {
   report?: any;
   errorType?: "bad_request" | "extraction_error" | "upstream_error" | "analysis_error";
   message?: string;
+  userMessage?: string;
 };
 
 // Vercel timeout limits:
@@ -371,8 +372,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Set user-friendly message based on error type
       let userMessage: string;
-      if (isExtractionTimeout) {
+      if (result.userMessage) {
+        userMessage = result.userMessage;
+      } else if (isExtractionTimeout) {
         userMessage = "Large documents take longer to analyze. For instant results, paste text or use demo examples.";
+      } else if (errorType === "upstream_error") {
+        userMessage = "Search service is temporarily unavailable. Please try again later or use the demo examples.";
       } else if (errorType === "extraction_error") {
         userMessage = "We couldn't read text from this file. Please upload a text-based PDF or paste the text directly.";
       } else {

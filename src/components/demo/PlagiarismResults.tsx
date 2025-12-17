@@ -94,6 +94,16 @@ export function PlagiarismResults({ result, error, onReset, onTryDemoExample, on
 
     const isExtractionError = error.errorType === "extraction_error" || error.errorType === "extraction_timeout";
     const isExtractionTimeout = error.errorType === "extraction_timeout";
+    const isUpstreamError = error.errorType === "upstream_error";
+    const isFileTooLarge = error.errorType === "file_too_large";
+
+    const displayMessage =
+      error.userMessage ||
+      (isUpstreamError
+        ? "Search service is temporarily unavailable. Try again later or use the demo example."
+        : isFileTooLarge
+          ? "Large documents are analyzed asynchronously. For live verification, paste text or use demo examples."
+          : error.message);
 
     return (
       <motion.div
@@ -190,13 +200,13 @@ export function PlagiarismResults({ result, error, onReset, onTryDemoExample, on
             <div className="flex-1">
               <h4 className="font-bold text-lg mb-2">Analysis Summary</h4>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                {error.message}
+                {displayMessage}
               </p>
             </div>
           </div>
           
           {/* CTA Buttons for extraction errors */}
-          {(isExtractionError || isExtractionTimeout) && (onTryDemoExample || onPasteTextInstead) && (
+        {(isExtractionError || isExtractionTimeout || isUpstreamError || isFileTooLarge) && (onTryDemoExample || onPasteTextInstead) && (
             <div className="flex flex-wrap gap-3 mb-4 pt-4 border-t border-border/50">
               {onTryDemoExample && (
                 <Button

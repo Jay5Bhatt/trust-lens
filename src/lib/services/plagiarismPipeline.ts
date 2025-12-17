@@ -6,6 +6,7 @@ export type PipelineResult = {
   report?: PlagiarismReport;
   errorType?: "bad_request" | "extraction_error" | "upstream_error" | "analysis_error";
   message?: string;
+  userMessage?: string;
 };
 
 /**
@@ -79,6 +80,10 @@ export async function runPlagiarismPipeline(
       ok: false,
       errorType,
       message: message || "An unexpected error occurred during analysis.",
+      userMessage:
+        errorType === "upstream_error"
+          ? "Search service is temporarily unavailable. Please try again later or use the demo examples."
+          : undefined,
     };
   }
 }

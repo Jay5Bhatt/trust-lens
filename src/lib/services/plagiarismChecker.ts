@@ -122,7 +122,8 @@ function generateExplanation(
   textLength: number,
   wasLimited?: boolean,
   totalChunks?: number,
-  processedChunks?: number
+  processedChunks?: number,
+  hadUpstreamIssues?: boolean
 ): string {
   const parts: string[] = [];
 
@@ -161,6 +162,12 @@ function generateExplanation(
       }). Analysis was limited to first ${processedChunks} chunk${
         processedChunks !== 1 ? "s" : ""
       } to stay within timeout limits. Results are based on a sample of the document.`
+    );
+  }
+
+  if (hadUpstreamIssues) {
+    parts.push(
+      "Web search service was unavailable during analysis, so plagiarism matching may be limited. Try again later or use the demo example."
     );
   }
 
@@ -287,14 +294,16 @@ export async function checkPlagiarism(
   // Process chunks (with concurrency limits)
   let segments: SuspiciousSegment[] = [];
   let unscoredCount = 0;
+  let upstreamErrors: Error[] = [];
   let analysisStatus: AnalysisStatus = "success";
 
   try {
     const result = await processChunksConcurrently(chunksToProcess);
     segments = result.segments;
     unscoredCount = result.unscoredCount;
+    upstreamErrors = result.errors;
 
-    if (unscoredCount > 0 || wasLimited) {
+    if (unscoredCount > 0 || wasLimited || upstreamErrors.length > 0) {
       analysisStatus = "partial_success";
     }
   } catch (error) {
@@ -347,7 +356,8 @@ export async function checkPlagiarism(
     textLength,
     wasLimited,
     totalChunks,
-    chunksToProcess.length
+    chunksToProcess.length,
+    upstreamErrors.length > 0
   );
 
   // Return structured report

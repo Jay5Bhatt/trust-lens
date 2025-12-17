@@ -49,9 +49,13 @@ export async function searchWebForChunk(
           },
         });
 
-        // Handle rate limiting (429)
-        if (response.status === 429) {
-          throw new Error("UPSTREAM_ERROR: Rate limit exceeded. Please try again later.");
+        // Soft-fail for common upstream issues (quota, auth, overload)
+        if ([401, 403, 429, 503].includes(response.status)) {
+          const errorText = await response.text();
+          console.warn(
+            `[webSearch] upstream unavailable (${response.status}): ${errorText?.slice?.(0, 200) || ""}`
+          );
+          return []; // graceful fallback: no web results
         }
 
         if (!response.ok) {
@@ -95,13 +99,11 @@ export async function searchWebForChunk(
     if (
       errorMessage.includes("502") ||
       errorMessage.includes("500") ||
-      errorMessage.includes("503") ||
       errorMessage.includes("504") ||
       errorMessage.includes("5xx") ||
       errorMessage.includes("network") ||
       errorMessage.includes("fetch failed") ||
       errorMessage.includes("timeout") ||
-      errorMessage.includes("SerpAPI request failed") ||
       errorMessage.includes("UPSTREAM_ERROR") ||
       errorMessage.includes("BAD_REQUEST")
     ) {
