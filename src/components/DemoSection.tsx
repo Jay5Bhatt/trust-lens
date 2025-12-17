@@ -330,6 +330,13 @@ export function DemoSection() {
     }
   }, []);
 
+  // Handle oversized/unsupported file errors from TextUploadArea
+  const handleFileSizeError = useCallback((error: { message: string; errorType?: string }) => {
+    setTextError(error);
+    setTextState("error");
+    textAnalysisReadyRef.current = true;
+  }, []);
+
   const handleImageReset = useCallback(() => {
     // Clean up any running intervals
     if (imageCheckIntervalRef.current) {
