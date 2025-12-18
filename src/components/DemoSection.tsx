@@ -81,6 +81,7 @@ export function DemoSection() {
   const [isDragging, setIsDragging] = useState(false);
   const [imageResult, setImageResult] = useState<AnalysisResult | null>(null);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedVideo, setUploadedVideo] = useState<string | null>(null);
   const imageAnalysisReadyRef = useRef(false);
   const imageCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -176,6 +177,7 @@ export function DemoSection() {
     // Examples use mock data - no API calls needed
     const exampleResult = exampleResults[key];
     setUploadedImage(exampleResult.exampleImage || null);
+    setUploadedVideo(exampleResult.exampleVideo || null);
     setImageState("analyzing");
     setImageResult(exampleResult);
     // Mark as ready immediately since examples don't need real analysis
@@ -464,7 +466,7 @@ export function DemoSection() {
                   <AnimatePresence mode="wait">
                     {imageState === "idle" && <EmptyState key="empty" />}
                     {imageState === "analyzing" && <AnalysisAnimation key="analyzing" onComplete={handleImageAnalysisComplete} />}
-                    {imageState === "results" && imageResult && <ResultsDashboard key="results" result={imageResult} onReset={handleImageReset} uploadedImage={uploadedImage || undefined} />}
+                    {imageState === "results" && imageResult && <ResultsDashboard key="results" result={imageResult} onReset={handleImageReset} uploadedImage={uploadedImage || undefined} uploadedVideo={uploadedVideo || undefined} />}
                   </AnimatePresence>
                 </div>
               </div>

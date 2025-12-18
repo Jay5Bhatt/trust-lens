@@ -1,20 +1,33 @@
 import { motion } from "framer-motion";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Play, AlertCircle } from "lucide-react";
+import { useState, useRef } from "react";
 import { Button } from "../ui/button";
 import { AuthenticityScore } from "./AuthenticityScore";
 import { AnomalyReport } from "./AnomalyReport";
 import { RealityTrace } from "./RealityTrace";
 import { TruthScoreCard } from "./TruthScoreCard";
 import { SourceMatchShield } from "./SourceMatchShield";
+import { VideoForensicSignals } from "./VideoForensicSignals";
 import type { AnalysisResult } from "./types";
 
 type ResultsDashboardProps = {
   result: AnalysisResult;
   onReset: () => void;
   uploadedImage?: string;
+  uploadedVideo?: string;
 };
 
-export function ResultsDashboard({ result, onReset, uploadedImage }: ResultsDashboardProps) {
+export function ResultsDashboard({ result, onReset, uploadedImage, uploadedVideo }: ResultsDashboardProps) {
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const isVideo = !!uploadedVideo || !!result.exampleVideo;
+  const videoUrl = uploadedVideo || result.exampleVideo;
+
+  const handleVideoClick = () => {
+    setIsVideoPlaying(true);
+    // Video will auto-play when isVideoPlaying is true
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -22,9 +35,30 @@ export function ResultsDashboard({ result, onReset, uploadedImage }: ResultsDash
       exit={{ opacity: 0 }}
       className="space-y-6"
     >
+      {/* Preview Label for Video */}
+      {isVideo && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-xl p-4 border border-yellow-500/30 bg-yellow-500/10"
+        >
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-400 shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-yellow-400">Preview</span> — full video verification is part of the next deployment phase
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Header with Reset */}
       <div className="flex items-center justify-between">
-        <h3 className="text-2xl font-bold">Analysis Complete</h3>
+        <div>
+          <h3 className="text-2xl font-bold">Analysis Complete</h3>
+          {isVideo && result.status === "AI-GENERATED VIDEO" && (
+            <p className="text-sm text-red-400 font-medium mt-1">Deep Fake Video Detected</p>
+          )}
+        </div>
         <Button
           variant="outline"
           size="sm"
@@ -46,7 +80,64 @@ export function ResultsDashboard({ result, onReset, uploadedImage }: ResultsDash
         />
 
         {/* Visual Analysis Panel */}
-        {uploadedImage && (
+        {isVideo && videoUrl ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="glass-card rounded-3xl p-6 md:p-8"
+          >
+            <h4 className="font-bold text-lg mb-4">Video Analysis</h4>
+            <div className="relative rounded-2xl overflow-hidden bg-muted/30 border border-border/50">
+              {!isVideoPlaying ? (
+                <div className="relative w-full aspect-video bg-black/50 cursor-pointer group" onClick={handleVideoClick}>
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    className="w-full h-full object-contain"
+                    preload="metadata"
+                    muted
+                    playsInline
+                  />
+                  {/* Play button overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-all pointer-events-none">
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="w-20 h-20 rounded-full bg-cyan/80 backdrop-blur-sm flex items-center justify-center shadow-[0_0_30px_rgba(94,247,166,0.5)] pointer-events-auto cursor-pointer"
+                    >
+                      <Play className="w-10 h-10 text-white ml-1" fill="white" />
+                    </motion.div>
+                  </div>
+                  {result.color === "red" && (
+                    <div className="absolute top-4 left-4 px-3 py-1.5 rounded-lg bg-red-500/90 text-white font-bold text-xs backdrop-blur-sm pointer-events-none">
+                      {result.status}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <video
+                  ref={(el) => {
+                    if (el) {
+                      videoRef.current = el;
+                      el.play().catch(() => {
+                        // Auto-play failed, user will need to click play
+                      });
+                    }
+                  }}
+                  src={videoUrl}
+                  className="w-full max-h-[400px] object-contain"
+                  controls
+                  autoPlay
+                  onEnded={() => setIsVideoPlaying(false)}
+                />
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mt-3 text-center">
+              Source Video Analysis
+            </p>
+          </motion.div>
+        ) : uploadedImage ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -86,8 +177,11 @@ export function ResultsDashboard({ result, onReset, uploadedImage }: ResultsDash
               Source Content Analysis
             </p>
           </motion.div>
-        )}
+        ) : null}
       </div>
+
+      {/* Video Forensic Signals - only for videos */}
+      {isVideo && <VideoForensicSignals anomalies={result.anomalies} />}
 
       {/* Anomaly Report */}
       <AnomalyReport anomalies={result.anomalies} />

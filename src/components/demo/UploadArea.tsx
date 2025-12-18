@@ -32,6 +32,13 @@ const examples = [
     emoji: "🎨",
     gradient: "from-purple/20 to-pink-500/20"
   },
+  { 
+    key: "ai-video-preview", 
+    label: "Preview: AI-Generated Video", 
+    icon: Film,
+    emoji: "🎬",
+    gradient: "from-purple/20 to-pink-500/20"
+  },
 ];
 
 export function UploadArea({ onFileSelect, onExampleSelect, isDragging, setIsDragging, disabled }: UploadAreaProps) {
