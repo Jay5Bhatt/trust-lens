@@ -98,6 +98,13 @@ export function DemoSection() {
   const textAnalysisReadyRef = useRef(false);
   const textCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Resume analysis state
+  const [resumeState, setResumeState] = useState<DemoState>("idle");
+  const [isResumeDragging, setIsResumeDragging] = useState(false);
+  const [resumeResult, setResumeResult] = useState<ResumeVerificationResult | null>(null);
+  const resumeAnalysisReadyRef = useRef(false);
+  const resumeCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   /**
    * Analyze file using 2-step process: EXIF metadata + Gemini AI
    */
