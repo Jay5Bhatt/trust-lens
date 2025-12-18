@@ -180,33 +180,33 @@ export function ResumeResults({ result, onReset }: ResumeResultsProps) {
         className="glass-card rounded-3xl p-6 md:p-8"
       >
         <h4 className="font-bold text-lg mb-6">Summary</h4>
-        <div className="grid md:grid-cols-3 gap-8 md:gap-10">
-          {/* Hiring Risk - Dominant Design */}
-          <div className={`glass-card rounded-2xl p-6 md:p-8 ${riskColor.bg} ${riskColor.border} border flex flex-col items-center justify-center min-h-[200px]`}>
-            <span className="text-xs text-muted-foreground mb-3 uppercase tracking-wide">Hiring Risk</span>
-            <div className={`text-7xl md:text-8xl font-black mb-3 ${riskColor.text}`}>
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* Hiring Risk - Clean and Aligned */}
+          <div className={`glass-card rounded-2xl p-5 md:p-6 ${riskColor.bg} ${riskColor.border} border flex flex-col items-center justify-center`}>
+            <span className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Hiring Risk</span>
+            <div className={`text-3xl md:text-4xl font-bold mb-3 ${riskColor.text} text-center`}>
               {result.summary.hiringRisk}
             </div>
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-xs text-muted-foreground text-center leading-relaxed">
               Risk assessment based on detected signals
             </p>
           </div>
 
           {/* Confidence */}
-          <div className={`glass-card rounded-2xl p-6 md:p-8 ${confidenceColor.bg} ${confidenceColor.border} border flex flex-col items-center justify-center min-h-[200px]`}>
-            <span className="text-xs text-muted-foreground mb-3 uppercase tracking-wide">Confidence</span>
-            <div className={`text-5xl md:text-6xl font-black mb-3 ${confidenceColor.text}`}>
+          <div className={`glass-card rounded-2xl p-5 md:p-6 ${confidenceColor.bg} ${confidenceColor.border} border flex flex-col items-center justify-center`}>
+            <span className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Confidence</span>
+            <div className={`text-3xl md:text-4xl font-bold mb-3 ${confidenceColor.text} text-center`}>
               {result.summary.confidence}
             </div>
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-xs text-muted-foreground text-center leading-relaxed">
               Analysis confidence level
             </p>
           </div>
 
           {/* Recommendation */}
-          <div className="glass-card rounded-2xl p-6 md:p-8 border border-cyan-500/30 bg-cyan-500/5 flex flex-col justify-center min-h-[200px]">
-            <span className="text-xs text-muted-foreground mb-3 uppercase tracking-wide">Recommendation</span>
-            <p className="text-lg md:text-xl font-semibold text-foreground leading-relaxed text-center">
+          <div className="glass-card rounded-2xl p-5 md:p-6 border border-cyan-500/30 bg-cyan-500/5 flex flex-col items-center justify-center">
+            <span className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Recommendation</span>
+            <p className="text-base md:text-lg font-semibold text-foreground leading-relaxed text-center">
               {result.summary.recommendation}
             </p>
           </div>
