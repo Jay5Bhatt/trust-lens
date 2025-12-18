@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
-import { Zap, Image, FileText } from "lucide-react";
+import { Zap, Image, FileText, Briefcase } from "lucide-react";
 import { UploadArea } from "./demo/UploadArea";
 import { TextUploadArea, SAMPLE_PLAGIARISM_TEXT } from "./demo/TextUploadArea";
 import { AnalysisAnimation } from "./demo/AnalysisAnimation";
@@ -10,15 +10,20 @@ import { ResultsDashboard } from "./demo/ResultsDashboard";
 import { PlagiarismResults } from "./demo/PlagiarismResults";
 import { EmptyState } from "./demo/EmptyState";
 import { PlagiarismEmptyState } from "./demo/PlagiarismEmptyState";
+import { ResumeUploadArea } from "./demo/ResumeUploadArea";
+import { ResumeResults } from "./demo/ResumeResults";
+import { ResumeEmptyState } from "./demo/ResumeEmptyState";
+import { getExampleResumeResult } from "./demo/resume-examples";
 import { DemoTabs } from "./DemoTabs";
 import { exampleResults, type AnalysisResult, type Anomaly, type Severity } from "./demo/types";
 import { analyzeImageCombined } from "@/lib/combined-analysis";
 import { checkPlagiarismAPI } from "@/lib/plagiarismChecker-browser";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import type { PlagiarismReport } from "@/lib/types/plagiarism";
+import type { ResumeVerificationResult } from "./demo/resume-types";
 
 type DemoState = "idle" | "analyzing" | "results" | "error";
-type TabValue = "image" | "text";
+type TabValue = "image" | "text" | "resume";
 
 /**
  * Generate mock plagiarism report for example text demo
@@ -363,6 +368,76 @@ export function DemoSection() {
     textAnalysisReadyRef.current = false;
   }, []);
 
+  /**
+   * Handle resume example selection
+   */
+  const handleResumeExampleSelect = useCallback(() => {
+    setResumeState("analyzing");
+    resumeAnalysisReadyRef.current = false;
+    
+    // Simulate analysis delay (2-4 seconds) for demo purposes
+    setTimeout(() => {
+      const exampleResult = getExampleResumeResult();
+      setResumeResult(exampleResult);
+      resumeAnalysisReadyRef.current = true;
+    }, 2000 + Math.random() * 2000);
+  }, []);
+
+  /**
+   * Handle resume file upload (optional - demo doesn't depend on this)
+   */
+  const handleResumeFileSelect = useCallback(async (file: File) => {
+    setResumeState("analyzing");
+    resumeAnalysisReadyRef.current = false;
+    
+    // For demo purposes, use the same example result
+    // In production, this would call a real API
+    setTimeout(() => {
+      const exampleResult = getExampleResumeResult();
+      setResumeResult(exampleResult);
+      resumeAnalysisReadyRef.current = true;
+    }, 2000 + Math.random() * 2000);
+  }, []);
+
+  const handleResumeAnalysisComplete = useCallback(() => {
+    // Clear any existing interval first
+    if (resumeCheckIntervalRef.current) {
+      clearInterval(resumeCheckIntervalRef.current);
+      resumeCheckIntervalRef.current = null;
+    }
+
+    // Check if analysis is ready, if not wait a bit
+    if (resumeAnalysisReadyRef.current) {
+      setResumeState("results");
+    } else {
+      // Wait for analysis to complete (poll every 200ms, max 15 seconds)
+      let attempts = 0;
+      const maxAttempts = 75; // 15 seconds / 200ms
+      
+      resumeCheckIntervalRef.current = setInterval(() => {
+        attempts++;
+        if (resumeAnalysisReadyRef.current || attempts >= maxAttempts) {
+          if (resumeCheckIntervalRef.current) {
+            clearInterval(resumeCheckIntervalRef.current);
+            resumeCheckIntervalRef.current = null;
+          }
+          setResumeState("results");
+        }
+      }, 200);
+    }
+  }, []);
+
+  const handleResumeReset = useCallback(() => {
+    // Clean up any running intervals
+    if (resumeCheckIntervalRef.current) {
+      clearInterval(resumeCheckIntervalRef.current);
+      resumeCheckIntervalRef.current = null;
+    }
+    setResumeState("idle");
+    setResumeResult(null);
+    resumeAnalysisReadyRef.current = false;
+  }, []);
+
   // Callback to try demo example - switches to text input and fills with example text
   const handleTryDemoExample = useCallback(() => {
     // Switch to text tab if not already
@@ -398,6 +473,10 @@ export function DemoSection() {
         clearInterval(textCheckIntervalRef.current);
         textCheckIntervalRef.current = null;
       }
+      if (resumeCheckIntervalRef.current) {
+        clearInterval(resumeCheckIntervalRef.current);
+        resumeCheckIntervalRef.current = null;
+      }
     };
   }, []);
 
@@ -421,28 +500,45 @@ export function DemoSection() {
 
         <motion.div initial={{ opacity: 0, y: 40 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, delay: 0.2 }} className="glass-card rounded-[2rem] p-6 md:p-10 shadow-card border-cyan/20">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="w-full">
-            <div className="mb-8 flex w-full max-w-lg mx-auto h-12 bg-muted/90 backdrop-blur-xl border-2 border-cyan/50 rounded-xl p-1.5 shadow-lg relative z-10">
+            <div className="mb-8 flex w-full max-w-2xl mx-auto h-12 bg-muted/90 backdrop-blur-xl border-2 border-cyan/50 rounded-xl p-1.5 shadow-lg relative z-10">
               <button
                 onClick={() => setActiveTab("image")}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs md:text-sm font-semibold transition-all ${
                   activeTab === "image"
                     ? "bg-gradient-to-r from-cyan/50 to-purple/50 text-white shadow-lg border border-cyan/60"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 }`}
               >
                 <Image className="w-4 h-4" />
-                Image Analysis
+                <span className="hidden sm:inline">Media Analysis</span>
+                <span className="sm:hidden">Media</span>
               </button>
               <button
                 onClick={() => setActiveTab("text")}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs md:text-sm font-semibold transition-all ${
                   activeTab === "text"
                     ? "bg-gradient-to-r from-cyan/50 to-purple/50 text-white shadow-lg border border-cyan/60"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 }`}
               >
                 <FileText className="w-4 h-4" />
-                Text/Plagiarism Check
+                <span className="hidden sm:inline">AI/Plagiarism</span>
+                <span className="sm:hidden">Plagiarism</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("resume")}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs md:text-sm font-semibold transition-all relative ${
+                  activeTab === "resume"
+                    ? "bg-gradient-to-r from-cyan/50 to-purple/50 text-white shadow-lg border border-cyan/60"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }`}
+              >
+                <Briefcase className="w-4 h-4" />
+                <span className="hidden sm:inline">Resume Verification</span>
+                <span className="sm:hidden">Resume</span>
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-[10px] font-bold text-yellow-400 bg-yellow-500/20 border border-yellow-500/30 rounded-full">
+                  Enterprise
+                </span>
               </button>
             </div>
 
@@ -495,6 +591,32 @@ export function DemoSection() {
                     {textState === "analyzing" && <AnalysisAnimation key="analyzing" onComplete={handleTextAnalysisComplete} />}
                     {textState === "results" && textResult && <PlagiarismResults key="results" result={textResult} error={null} onReset={handleTextReset} onTryDemoExample={handleTryDemoExample} onPasteTextInstead={handlePasteTextInstead} />}
                     {textState === "error" && <PlagiarismResults key="error" result={null} error={textError} onReset={handleTextReset} onTryDemoExample={handleTryDemoExample} onPasteTextInstead={handlePasteTextInstead} />}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent 
+              value="resume" 
+              className="mt-0" 
+              forceMount={activeTab === "resume"}
+              style={activeTab === "resume" ? { display: "block" } : undefined}
+            >
+              <div className="grid lg:grid-cols-5 gap-8 lg:gap-10">
+                <div className="lg:col-span-2">
+                  <ResumeUploadArea 
+                    onFileSelect={handleResumeFileSelect}
+                    onExampleSelect={handleResumeExampleSelect}
+                    isDragging={isResumeDragging}
+                    setIsDragging={setIsResumeDragging}
+                    disabled={resumeState === "analyzing"}
+                  />
+                </div>
+                <div className="lg:col-span-3">
+                  <AnimatePresence mode="wait">
+                    {resumeState === "idle" && <ResumeEmptyState key="empty" />}
+                    {resumeState === "analyzing" && <AnalysisAnimation key="analyzing" onComplete={handleResumeAnalysisComplete} />}
+                    {resumeState === "results" && resumeResult && <ResumeResults key="results" result={resumeResult} onReset={handleResumeReset} />}
                   </AnimatePresence>
                 </div>
               </div>
