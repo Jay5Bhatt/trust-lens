@@ -36,14 +36,14 @@ export function RealityTrace({ steps }: RealityTraceProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.3 }}
-      className="glass-card rounded-3xl p-6 md:p-8"
+      className="glass-card rounded-3xl p-4 sm:p-6 md:p-8"
     >
-      <h4 className="font-bold text-xl mb-6 flex items-center gap-3">
-        <Sparkles className="w-6 h-6 text-purple" />
-        Reality Trace™ - Creation Pathway
+      <h4 className="font-bold text-lg sm:text-xl mb-4 sm:mb-6 flex items-center gap-3">
+        <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-purple shrink-0" />
+        <span className="break-words">Reality Trace™ - Creation Pathway</span>
       </h4>
 
-      <div className="flex flex-wrap items-center gap-3 md:gap-4">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
         {steps.map((step, index) => {
           const Icon = getIconForStep(step.step);
           const isLast = index === steps.length - 1;
@@ -57,11 +57,11 @@ export function RealityTrace({ steps }: RealityTraceProps) {
               className="flex items-center"
             >
               <div className="flex flex-col items-center">
-                <div className="glass-card rounded-2xl p-4 border-cyan/20 hover:border-cyan/40 transition-colors">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan/20 to-purple/20 flex items-center justify-center mb-2">
-                    <Icon className="w-6 h-6 text-cyan" />
+                <div className="glass-card rounded-2xl p-3 sm:p-4 border-cyan/20 hover:border-cyan/40 transition-colors">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-cyan/20 to-purple/20 flex items-center justify-center mb-2">
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-cyan" />
                   </div>
-                  <p className="text-sm font-medium text-center max-w-[120px] leading-tight">{step.step}</p>
+                  <p className="text-xs sm:text-sm font-medium text-center leading-tight break-words">{step.step}</p>
                   <div className="mt-2 px-2 py-1 rounded-full bg-cyan/10 text-center">
                     <span className="text-xs font-bold text-cyan">{step.confidence}%</span>
                   </div>
@@ -73,9 +73,9 @@ export function RealityTrace({ steps }: RealityTraceProps) {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 * index + 0.5 }}
-                  className="mx-2 md:mx-3"
+                  className="mx-1 sm:mx-2 md:mx-3"
                 >
-                  <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                 </motion.div>
               )}
             </motion.div>

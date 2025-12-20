@@ -40,11 +40,11 @@ export function SourceMatchShield({ sourceMatch, score }: SourceMatchShieldProps
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.5 }}
-      className="glass-card rounded-3xl p-6 md:p-8"
+      className="glass-card rounded-3xl p-4 sm:p-6 md:p-8"
     >
-      <h4 className="font-bold text-xl mb-6 flex items-center gap-3">
-        <Shield className="w-6 h-6 text-cyan" />
-        Source Match Shield - Verification Checks
+      <h4 className="font-bold text-base sm:text-lg md:text-xl mb-4 sm:mb-6 flex items-center gap-3">
+        <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-cyan shrink-0" />
+        <span className="break-words">Source Match Shield - Verification Checks</span>
       </h4>
 
       <div className="space-y-4">
@@ -59,7 +59,7 @@ export function SourceMatchShield({ sourceMatch, score }: SourceMatchShieldProps
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 * index + 0.6 }}
-              className={`flex items-center gap-4 p-4 rounded-xl transition-colors ${
+              className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl transition-colors ${
                 isPass 
                   ? "bg-green-500/10 border border-green-500/30" 
                   : isFail 
@@ -78,11 +78,11 @@ export function SourceMatchShield({ sourceMatch, score }: SourceMatchShieldProps
                   <Minus className="w-5 h-5 text-muted-foreground" />
                 )}
               </div>
-              <div className="flex-1">
-                <span className={`font-semibold ${isPass ? "text-green-400" : isFail ? "text-red-400" : "text-muted-foreground"}`}>
+              <div className="flex-1 min-w-0">
+                <span className={`font-semibold ${isPass ? "text-green-400" : isFail ? "text-red-400" : "text-muted-foreground"} break-words`}>
                   {check.label}
                 </span>
-                <p className="text-sm text-muted-foreground mt-0.5">{check.description}</p>
+                <p className="text-sm text-muted-foreground mt-0.5 break-words">{check.description}</p>
               </div>
             </motion.div>
           );

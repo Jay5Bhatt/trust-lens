@@ -33,7 +33,7 @@ export function ResultsDashboard({ result, onReset, uploadedImage, uploadedVideo
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="space-y-6"
+      className="space-y-4 sm:space-y-6"
     >
       {/* Preview Label for Video */}
       {isVideo && (
@@ -52,9 +52,9 @@ export function ResultsDashboard({ result, onReset, uploadedImage, uploadedVideo
       )}
 
       {/* Header with Reset */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h3 className="text-2xl font-bold">Analysis Complete</h3>
+          <h3 className="text-xl sm:text-2xl font-bold">Analysis Complete</h3>
           {isVideo && result.status === "AI-GENERATED VIDEO" && (
             <p className="text-sm text-red-400 font-medium mt-1">Deep Fake Video Detected</p>
           )}
@@ -63,10 +63,11 @@ export function ResultsDashboard({ result, onReset, uploadedImage, uploadedVideo
           variant="outline"
           size="sm"
           onClick={onReset}
-          className="gap-2"
+          className="gap-2 w-full sm:w-auto"
         >
           <RotateCcw className="w-4 h-4" />
-          Analyze Another
+          <span className="hidden sm:inline">Analyze Another</span>
+          <span className="sm:hidden">Reset</span>
         </Button>
       </div>
 
@@ -85,9 +86,9 @@ export function ResultsDashboard({ result, onReset, uploadedImage, uploadedVideo
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass-card rounded-3xl p-6 md:p-8"
+            className="glass-card rounded-3xl p-4 sm:p-6 md:p-8"
           >
-            <h4 className="font-bold text-lg mb-4">Video Analysis</h4>
+            <h4 className="font-bold text-base sm:text-lg mb-4">Video Analysis</h4>
             <div className="relative rounded-2xl overflow-hidden bg-muted/30 border border-border/50">
               {!isVideoPlaying ? (
                 <div className="relative w-full aspect-video bg-black/50 cursor-pointer group" onClick={handleVideoClick}>
@@ -142,9 +143,9 @@ export function ResultsDashboard({ result, onReset, uploadedImage, uploadedVideo
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass-card rounded-3xl p-6 md:p-8"
+            className="glass-card rounded-3xl p-4 sm:p-6 md:p-8"
           >
-            <h4 className="font-bold text-lg mb-4">Visual Analysis</h4>
+            <h4 className="font-bold text-base sm:text-lg mb-4">Visual Analysis</h4>
             <div className="relative rounded-2xl overflow-hidden bg-muted/30 border border-border/50">
               <img
                 src={uploadedImage}

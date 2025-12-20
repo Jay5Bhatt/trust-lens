@@ -40,3 +40,5 @@ export type ResumeVerificationResult = {
   detectionSignals: DetectionSignals;
   explainability: ExplainabilityItem[];
 };
+
+

@@ -62,13 +62,13 @@ export function AuthenticityScore({ score, status, color }: AuthenticityScorePro
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className={`glass-card rounded-3xl p-8 ${colorClass.bg} ${colorClass.border} border ${colorClass.glow}`}
+      className={`glass-card rounded-3xl p-4 sm:p-6 md:p-8 ${colorClass.bg} ${colorClass.border} border ${colorClass.glow}`}
     >
-      <h4 className="font-semibold text-muted-foreground mb-6 text-center text-lg">Authenticity Score</h4>
+      <h4 className="font-semibold text-muted-foreground mb-4 sm:mb-6 text-center text-base sm:text-lg">Authenticity Score</h4>
       
       <div className="flex flex-col items-center">
         {/* Circular Progress Ring */}
-        <div className="relative w-40 h-40 mb-6">
+        <div className="relative w-32 h-32 sm:w-40 sm:h-40 mb-4 sm:mb-6">
           <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
             {/* Background circle */}
             <circle
@@ -96,7 +96,7 @@ export function AuthenticityScore({ score, status, color }: AuthenticityScorePro
           </svg>
           {/* Score in center */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className={`text-5xl font-bold ${colorClass.text}`}>
+            <span className={`text-4xl sm:text-5xl font-bold ${colorClass.text}`}>
               {displayScore}%
             </span>
           </div>
@@ -107,13 +107,13 @@ export function AuthenticityScore({ score, status, color }: AuthenticityScorePro
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
-          className={`px-6 py-3 rounded-xl ${colorClass.bg} ${colorClass.border} border`}
+          className={`px-4 sm:px-6 py-2 sm:py-3 rounded-xl ${colorClass.bg} ${colorClass.border} border max-w-full`}
         >
-          <span className={`text-xl font-bold ${colorClass.text}`}>{status}</span>
+          <span className={`text-base sm:text-lg md:text-xl font-bold ${colorClass.text} break-words`}>{status}</span>
         </motion.div>
 
         {/* Confidence Bar */}
-        <div className="w-full mt-6">
+        <div className="w-full mt-4 sm:mt-6">
           <div className="flex justify-between text-sm mb-2">
             <span className="text-muted-foreground">Confidence</span>
             <span className={colorClass.text}>{score > 80 ? "High" : score > 50 ? "Medium" : "Low"}</span>

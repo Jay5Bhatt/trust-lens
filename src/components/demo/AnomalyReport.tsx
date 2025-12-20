@@ -20,11 +20,11 @@ export function AnomalyReport({ anomalies }: AnomalyReportProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
-      className="glass-card rounded-3xl p-6 md:p-8"
+      className="glass-card rounded-3xl p-4 sm:p-6 md:p-8"
     >
-      <h4 className="font-bold text-xl mb-6 flex items-center gap-3">
-        <AlertTriangle className="w-6 h-6 text-yellow-400" />
-        Anomaly Report ({anomalies.length} issues)
+      <h4 className="font-bold text-lg sm:text-xl mb-4 sm:mb-6 flex items-center gap-3">
+        <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400 shrink-0" />
+        <span className="break-words">Anomaly Report ({anomalies.length} issues)</span>
       </h4>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -38,20 +38,20 @@ export function AnomalyReport({ anomalies }: AnomalyReportProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 * index + 0.3 }}
-              className={`rounded-2xl p-5 ${config.bg} ${config.border} border transition-all duration-300 hover:scale-[1.02]`}
+              className={`rounded-2xl p-4 sm:p-5 ${config.bg} ${config.border} border transition-all duration-300 hover:scale-[1.02]`}
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
                 <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0`}>
                   <Icon className={`w-5 h-5 ${config.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <h5 className="font-semibold text-foreground truncate">{anomaly.title}</h5>
+                    <h5 className="font-semibold text-foreground break-words">{anomaly.title}</h5>
                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${config.bg} ${config.color} shrink-0`}>
                       {anomaly.severity}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{anomaly.description}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed break-words">{anomaly.description}</p>
                 </div>
               </div>
             </motion.div>
